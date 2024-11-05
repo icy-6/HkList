@@ -83,4 +83,9 @@ class ResponseController extends Controller
     {
         return self::response(20012, 500, "获取验证码图片信息失败,errno: $errno");
     }
+
+    public static function notFound($msg = "提供的数据查找不到对应数据", $data = null)
+    {
+        return self::response(20013, 404, $msg, $data);
+    }
 }

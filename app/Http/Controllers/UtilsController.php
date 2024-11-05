@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
+use XdbSearcher;
 
 class UtilsController extends Controller
 {
@@ -56,5 +57,76 @@ class UtilsController extends Controller
         $seckey = str_replace("~", "=", $seckey);
         $seckey = str_replace("_", "/", $seckey);
         return $seckey;
+    }
+
+    // 省份标准名称映射表
+    const provinces = [
+        "北京" => "北京市",
+        "天津" => "天津市",
+        "上海" => "上海市",
+        "重庆" => "重庆市",
+        "河北" => "河北省",
+        "山西" => "山西省",
+        "内蒙古" => "内蒙古自治区",
+        "辽宁" => "辽宁省",
+        "吉林" => "吉林省",
+        "黑龙江" => "黑龙江省",
+        "江苏" => "江苏省",
+        "浙江" => "浙江省",
+        "安徽" => "安徽省",
+        "福建" => "福建省",
+        "江西" => "江西省",
+        "山东" => "山东省",
+        "河南" => "河南省",
+        "湖北" => "湖北省",
+        "湖南" => "湖南省",
+        "广东" => "广东省",
+        "广西" => "广西壮族自治区",
+        "海南" => "海南省",
+        "四川" => "四川省",
+        "贵州" => "贵州省",
+        "云南" => "云南省",
+        "西藏" => "西藏自治区",
+        "陕西" => "陕西省",
+        "甘肃" => "甘肃省",
+        "青海" => "青海省",
+        "宁夏" => "宁夏回族自治区",
+        "新疆" => "新疆维吾尔自治区",
+        "香港" => "香港特别行政区",
+        "澳门" => "澳门特别行政区",
+        "台湾" => "台湾省"
+    ];
+
+    private static ?XdbSearcher $ip2region = null;
+
+    public static function getProvinces($ip)
+    {
+        if (!self::$ip2region) self::$ip2region = new XdbSearcher();
+        if ($ip === "0.0.0.0" || $ip === "::1") {
+            $prov = "上海市";
+        } else {
+            try {
+                $result = self::$ip2region->search($ip);
+                if (!$result) {
+                    $prov = "上海市";
+                } else {
+                    $prov = explode("|", $result)[2];
+                }
+            } catch (Exception $exception) {
+                $prov = "上海市";
+            }
+        }
+
+        foreach (self::provinces as $key => $standardName) {
+            if (str_contains($prov, $key)) {
+                return ResponseController::success([
+                    "province" => $standardName
+                ]);
+            }
+        }
+
+        return ResponseController::success([
+            "province" => "上海市"
+        ]);
     }
 }
