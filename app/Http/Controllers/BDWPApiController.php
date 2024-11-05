@@ -6,5 +6,397 @@ use Illuminate\Http\Request;
 
 class BDWPApiController extends Controller
 {
-    //
+    /**
+     * {
+     *     "avatar_url":"https://dss0.bdstatic.com/xxx",
+     *     "baidu_name":"xxx",
+     *     "netdisk_name":"xxxx",
+     *     "uk":0,
+     *     "vip_type":0
+     * }
+     */
+    public static function getAccountInfo($accountType, $cookieOrAccessToken)
+    {
+        $req = [
+            "headers" => ["User-Agent" => config("hklist.fake_user_agent")],
+            "query" => ["method" => "uinfo"]
+        ];
+
+        if ($accountType === "cookie") {
+            $req["headers"]["Cookie"] = $cookieOrAccessToken;
+        } else if ($accountType === "access_token") {
+            $req["query"]["access_token"] = $cookieOrAccessToken;
+        }
+
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getAccountInfo",
+            "get",
+            "https://pan.baidu.com/rest/2.0/xpan/nas",
+            $req
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $userInfo = $data["data"];
+        if (
+            !isset($userInfo["errno"]) ||
+            !isset($userInfo["errmsg"]) ||
+            $userInfo["errno"] !== 0 ||
+            $userInfo["errmsg"] !== "succ"
+        ) {
+            return ResponseController::getAccountInfoFailed($userInfo["errmsg"]);
+        }
+
+        return ResponseController::success([
+            "avatar_url" => $userInfo["avatar_url"],
+            "baidu_name" => $userInfo["baidu_name"],
+            "netdisk_name" => $userInfo["netdisk_name"],
+            "uk" => $userInfo["uk"],
+            "vip_type" => $userInfo["vip_type"],
+        ]);
+    }
+
+    /**
+     * ↓ 只有是 svip 的账号才能获取到下面的信息
+     * {
+     *      "current_product": {
+     *          "cluster": "vip",
+     *          "detail_cluster": "svip",
+     *          "product_type": "vip2_1y",
+     *          "product_id": "1838062032397226670"
+     *      },
+     *      "reminder": {
+     *          "advertiseContent": [],
+     *          "reminderWithContent": [],
+     *          "serverTime": 1730721100,
+     *          "svip": {
+     *                 "leftseconds": 20578099,
+     *                 "nextState": "normal"
+     *          }
+     *      }
+     * }
+     */
+    public static function getSvipEndAt($accountType, $cookieOrAccessToken)
+    {
+        $req = [
+            "headers" => ["User-Agent" => config("hklist.fake_user_agent")],
+            "query" => ["method" => "uinfo"]
+        ];
+
+        if ($accountType === "cookie") {
+            $req["headers"]["Cookie"] = $cookieOrAccessToken;
+        } else if ($accountType === "access_token") {
+            $req["query"]["access_token"] = $cookieOrAccessToken;
+        }
+
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getSvipEndAt",
+            "get",
+            "https://pan.baidu.com/rest/2.0/membership/user",
+            $req
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $userInfo = $data["data"];
+        if (
+            !isset($userInfo["error_code"]) ||
+            !isset($userInfo["error_msg"]) ||
+            $userInfo["errno"] !== 0 ||
+            $userInfo["errmsg"] !== ""
+        ) {
+            return ResponseController::getSvipAtFailed($userInfo["errmsg"]);
+        }
+
+        $current_product = $userInfo["current_product_v2"];
+        $reminder = $userInfo["reminder"];
+        return ResponseController::success([
+            "current_product" => $current_product,
+            "reminder" => $reminder,
+        ]);
+    }
+
+    /**
+     * {
+     *      "expires_in": 2592000,
+     *      "refresh_token": "xxxx",
+     *      "access_token": "xxx",
+     *      "session_secret": "",
+     *      "session_key": "",
+     *      "scope": "basic netdisk"
+     * }
+     */
+    public static function getAccessToken($refreshToken)
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getAccessToken",
+            "get",
+            "https://openapi.baidu.com/oauth/2.0/token",
+            [
+                "query" => [
+                    "grant_type" => "refresh_token",
+                    "refresh_token" => $refreshToken,
+                    // alist
+                    "client_id" => "iYCeC9g08h5vuP9UqvPHKKSVrKFXGa1v",
+                    "client_secret" => "jXiFMOPVPCWlO2M5CwWQzffpNPaGTRBG"
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $accessToken = $data["data"];
+        if (isset($accessToken["error_description"])) {
+            return ResponseController::getAccessTokenFailed($accessToken["error_description"]);
+        }
+
+        return $res;
+    }
+
+    /**
+     * {
+     *     "cid": 0
+     * }
+     */
+    public static function getEnterpriseInfo($cookie)
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getAccessToken",
+            "get",
+            "https://pan.baidu.com/mid_enterprise_v2/api/enterprise/organization/allorganizationinfo",
+            [
+                "query" => [
+                    "clienttype" => 0,
+                    "app_id" => 24029990
+                ],
+                "headers" => [
+                    "User-Agent" => config("hklist.fake_user_agent"),
+                    "Cookie" => $cookie
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $enterpriseInfo = $data["data"];
+        if (
+            !isset($enterpriseInfo["errno"]) ||
+            !isset($enterpriseInfo["newno"]) ||
+            !isset($enterpriseInfo["show_msg"]) ||
+            $enterpriseInfo["errno"] !== 0 ||
+            $enterpriseInfo["newno"] !== "" ||
+            $enterpriseInfo["show_msg"] !== "" ||
+            !isset($enterpriseInfo["data"][0]["cid"])
+        ) {
+            return ResponseController::getEnterpriseInfoFailed($enterpriseInfo["show_msg"]);
+        }
+
+        return ResponseController::success([
+            "cid" => $enterpriseInfo["data"][0]["cid"]
+        ]);
+    }
+
+    /**
+     * {
+     *      "start_time": 0,
+     *      "end_time": 0,
+     *      "ban_status": false,
+     *      "ban_reason": "",
+     *      "ban_times": 0,
+     *      "ban_msg": "",
+     *      "user_operate_type": 0
+     * }
+     */
+    public static function getAccountAPL($accountType, $cookieOrAccessToken)
+    {
+        $req = [
+            "headers" => ["User-Agent" => config("hklist.fake_user_agent")]
+        ];
+
+        if ($accountType === "cookie") {
+            $req["headers"]["Cookie"] = $cookieOrAccessToken;
+        } else if ($accountType === "access_token") {
+            $req["query"]["access_token"] = $cookieOrAccessToken;
+        }
+
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getAccessToken",
+            "get",
+            "https://pan.baidu.com/api/checkapl/download",
+            $req
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $antiData = $data["data"];
+
+        if (
+            !isset($antiData["errno"]) ||
+            !isset($antiData["errmsg"]) ||
+            $antiData["errno"] !== 0 ||
+            $antiData["errmsg"] !== "success"
+        ) {
+            return ResponseController::getAccountAPLFailed($antiData["show_msg"]);
+        }
+
+        return ResponseController::success($antiData["anti"]);
+    }
+
+    /**
+     * {
+     *     "uk": 114514,
+     *     "shareid": 1919810,
+     *     "randsk": "xxxxx",
+     *     "list": {
+     *         "category": 0,
+     *         "fs_id": 0,
+     *         "isdir": 0,
+     *         "local_ctime": 0,
+     *         "local_mtime": 0,
+     *         "md5": "xxx",
+     *         "path": "xxxx",
+     *         "server_ctime": 0,
+     *         "server_mtime": 0,
+     *         "server_filename": "xxxxx",
+     *         "size": 0,
+     *         "dlink": "aaaa"
+     *     }[]
+     * }
+     */
+    public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 1000, $order = "filename")
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getFileList",
+            "post",
+            "https://pan.baidu.com/share/wxlist",
+            [
+                "headers" => [
+                    "User-Agent" => config("94list.fake_wx_user_agent"),
+                    "Cookie" => config("94list.fake_cookie")
+                ],
+                "query" => [
+                    "channel" => "weixin",
+                    "version" => "2.9.6",
+                    "clienttype" => 25,
+                    "web" => 1,
+                    "qq-pf-to" => "pcqq.c2c"
+                ],
+                "form_params" => [
+                    "shorturl" => $surl,
+                    "pwd" => $pwd,
+                    "dir" => $dir,
+                    "root" => $dir === "/" ? 1 : 0,
+                    "page" => $page,
+                    "num" => $num,
+                    "order" => $order
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["errno"]) ||
+            !isset($response["errtype"])
+        ) {
+            return ResponseController::getFileListFailed($response["errno"], $response["errtype"]);
+        }
+
+        $errno = $response["errno"];
+        $errtype = $response["errtype"];
+
+        if ($errno !== 0) {
+            if ($errno === -130) {
+                return match ($errtype) {
+                    0 => "啊哦，你来晚了，分享的文件已经被删除了，下次要早点哟。",
+                    1 => "啊哦，你来晚了，分享的文件已经被取消了，下次要早点哟。",
+                    2 => "此链接分享内容暂时不可访问",
+                    3 => "此链接分享内容可能因为涉及侵权、色情、反动、低俗等信息，无法访问！",
+                    5 => "啊哦！链接错误没找到文件，请打开正确的分享链接!",
+                    10 => "啊哦，来晚了，该分享文件已过期",
+                    11 => "由于访问次数过多，该分享链接已失效",
+                    12 => "因该分享含有自动备份文件夹，暂无法查看",
+                    15 => "系统升级，链接暂时无法查看，升级完成后恢复正常。",
+                    17 => "该链接访问范围受限，请使用正常的访问方式",
+                    123 => "该链接已超过访问人数上限，可联系分享者重新分享",
+                    124 => "您访问的链接已被冻结，可联系分享者进行激活",
+                    "mis_105" => "surl 错误",
+                    "mispw_9", "mispwd-9" => "提取码错误",
+                    "mis_2", "mis_4" => "路径错误",
+                    default => ResponseController::getFileListFailed($errno, $errtype)
+                };
+            }
+
+            return ResponseController::getFileListFailed($errno, $errtype);
+        }
+
+        return ResponseController::success([
+            "uk" => $response["data"]["uk"],
+            "shareid" => $response["data"]["shareid"],
+            "randsk" => UtilsController::decodeSecKey($response["data"]["seckey"]),
+            "list" => collect($response["data"]["list"])->map(function ($item) {
+                return [
+                    "category" => (int)$item["category"],
+                    "fs_id" => (double)$item["fs_id"],
+                    "isdir" => (int)$item["isdir"],
+                    "local_ctime" => (double)$item["local_ctime"],
+                    "local_mtime" => (double)$item["local_mtime"],
+                    "md5" => $item["md5"],
+                    "path" => $item["path"],
+                    "server_ctime" => (double)$item["server_ctime"],
+                    "server_mtime" => (double)$item["server_mtime"],
+                    "server_filename" => $item["server_filename"],
+                    "size" => (double)$item["size"],
+                    "dlink" => $item["dlink"] ?? ""
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * {
+     *     "vcode_str": "xxx",
+     *     "vcode_img": "aaa"
+     * }
+     */
+    public static function getVcode()
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getFileList",
+            "post",
+            "https://pan.baidu.com/api/getvcode",
+            [
+                "headers" => [
+                    "User-Agent" => config("94list.fake_wx_user_agent"),
+                    "Cookie" => config("94list.fake_cookie")
+                ],
+                "query" => [
+                    "prod" => "pan"
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["errno"]) ||
+            $response["errno"] !== 0
+        ) {
+            return ResponseController::getVcodeFailed($response["errno"]);
+        }
+
+        return ResponseController::success([
+            "vcode_str" => $response["data"]["vcode"],
+            "vcode_img" => $response["data"]["img"],
+        ]);
+    }
 }
