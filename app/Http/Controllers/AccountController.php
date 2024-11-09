@@ -13,7 +13,10 @@ class AccountController extends Controller
 {
     public function select(Request $request)
     {
-        $data = Account::query()->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")->get();
+        $data = Account::query()
+            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->get();
+
         return ResponseController::success($data);
     }
 
@@ -21,17 +24,14 @@ class AccountController extends Controller
     {
         // 需要传入 cookie 以及类型
         $validator = Validator::make($request->post(), [
-            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")],
-            "account_data" => "required"
+            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")]
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $have_repeat = false;
-
         $accountType = $request["account_type"];
         $accountData = $request["account_data"];
-
         if ($accountType === "cookie" || $accountType === "enterprise_cookie" || $accountType === "open_platform") {
             if ($accountType === "cookie" || $accountType === "enterprise_cookie") {
                 $validator = Validator::make($request->post(), [
@@ -57,7 +57,6 @@ class AccountController extends Controller
                 } else {
                     $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"]);
                 }
-
                 $accountInfoData = $accountInfo->getData(true);
                 if ($accountInfoData["code"] !== 200) return $accountInfo;
                 $accountInfoData = $accountInfoData["data"];
@@ -83,7 +82,6 @@ class AccountController extends Controller
                 "account_data.*.pwd" => "required|string",
                 "account_data.*.cookie" => "required|string",
             ]);
-
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
             foreach ($accountData as $accountDatum) {
@@ -97,7 +95,7 @@ class AccountController extends Controller
         }
 
         return ResponseController::success([
-            "haveSameUk" => $have_repeat
+            "have_repeat" => $have_repeat
         ]);
     }
 
@@ -207,7 +205,7 @@ class AccountController extends Controller
         $fileListData = $fileList->getData(true);
         if ($fileListData["code"] !== 200) return $fileListData;
 
-        Account::query()->create([
+        return ResponseController::success([
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "download_ticket",
@@ -230,7 +228,7 @@ class AccountController extends Controller
 
     const prov = ["北京市", "天津市", "上海市", "重庆市", "河北省", "山西省", "内蒙古自治区", "辽宁省", "吉林省", "黑龙江省", "江苏省", "浙江省", "安徽省", "福建省", "江西省", "山东省", "河南省", "湖北省", "湖南省", "广东省", "广西壮族自治区", "海南省", "四川省", "贵州省", "云南省", "西藏自治区", "陕西省", "甘肃省", "青海省", "宁夏回族自治区", "新疆维吾尔自治区", "香港特别行政区", "澳门特别行政区", "台湾省"];
 
-    public function updateData(Request $request)
+    public function update(Request $request)
     {
         $validator = Validator::make($request->post(), [
             "switch" => "required|boolean",
@@ -238,18 +236,15 @@ class AccountController extends Controller
             "id" => "required|array",
             "id.*" => "required|integer",
         ]);
-
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        foreach ($request["id"] as $id) {
-            $account = Account::query()->find($id);
-            if (!$account) return ResponseController::accountNotFound();
-            $account->update([
+        Account::query()
+            ->whereIn("id", $request["id"])
+            ->update([
                 "switch" => $request["switch"],
                 "reason" => $request["switch"] ? "手动启用" : "手动禁用",
                 "prov" => $request["prov"]
             ]);
-        }
 
         return ResponseController::success();
     }
@@ -262,11 +257,7 @@ class AccountController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        foreach ($request["id"] as $id) {
-            $account = Account::query()->find($id);
-            if (!$account) return ResponseController::accountNotFound();
-            $account->delete();
-        }
+        Account::query()->whereIn("id", $request["id"])->delete();
 
         return ResponseController::success();
     }

@@ -4,41 +4,76 @@ namespace App\Http\Controllers;
 
 use App\Models\BlackList;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-class BlackListController extends ModelController
+class BlackListController extends Controller
 {
-    public static string $tableClass = BlackList::class;
+    public function select(Request $request)
+    {
+        $data = BlackList::query()
+            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->get();
+
+        return ResponseController::success($data);
+    }
 
     public function insert(Request $request)
     {
-        self::$insertValidate = [
+        $validator = Validator::make($request->post(), [
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
             "reason" => "required|string",
-            "expired_at" => "required|date"
-        ];
-        return self::_insert($request->post());
+            "expires_at" => "required|date"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        BlackList::query()->create([
+            "type" => $request["type"],
+            "identifier" => $request["identifier"],
+            "reason" => $request["reason"],
+            "expires_at" => $request["expires_at"]
+        ]);
+
+        return ResponseController::success();
     }
 
     public function delete(Request $request)
     {
-        return self::_delete($request["id"]);
+        $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|integer",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        BlackList::query()
+            ->whereIn("id", $request["id"])
+            ->delete();
+
+        return ResponseController::success();
     }
 
     public function update(Request $request)
     {
-        self::$updateValidate = [
-            "type" => ["nullable", Rule::in("ip", "fingerprint")],
-            "identifier" => "nullable|string",
-            "reason" => "nullable|string",
-            "expired_at" => "nullable|date"
-        ];
-        return self::_update($request["id"], $request->post());
-    }
+        $validator = Validator::make($request->post(), [
+            "type" => ["required", Rule::in("ip", "fingerprint")],
+            "identifier" => "required|string",
+            "reason" => "required|string",
+            "expires_at" => "required|date",
+            "id" => "required|array",
+            "id.*" => "required|integer",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-    public function get(Request $request)
-    {
-        return self::_get($request["order"], $request["column"]);
+        BlackList::query()
+            ->whereIn("id", $request["id"])
+            ->update([
+                "type" => $request["type"],
+                "identifier" => $request["identifier"],
+                "reason" => $request["reason"],
+                "expires_at" => $request["expires_at"]
+            ]);
+
+        return ResponseController::success();
     }
 }

@@ -16,7 +16,14 @@ Route::middleware(["IsInstall"])->group(function () {
             Route::get("/", [AccountController::class, "select"]);
             Route::post("/", [AccountController::class, "insert"]);
             Route::post("/update", [AccountController::class, "updateInfo"]);
-            Route::patch("/", [AccountController::class, "updateData"]);
+            Route::patch("/", [AccountController::class, "update"]);
+            Route::delete("/", [AccountController::class, "delete"]);
+        });
+
+        Route::prefix("/black_list")->group(function () {
+            Route::get("/", [AccountController::class, "select"]);
+            Route::post("/", [AccountController::class, "insert"]);
+            Route::patch("/", [AccountController::class, "update"]);
             Route::delete("/", [AccountController::class, "delete"]);
         });
     });
