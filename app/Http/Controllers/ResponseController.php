@@ -44,9 +44,9 @@ class ResponseController extends Controller
         return self::response(20004, 500, "在执行 $actionName 时服务器侧出现错误,错误信息: " . $exception->getMessage(), $exception);
     }
 
-    public static function paramsError()
+    public static function paramsError($errors)
     {
-        return self::response(20005, 500, "参数错误");
+        return self::response(20005, 500, "参数错误", config("app.debug") ? ["errors" => $errors] : null);
     }
 
     public static function getAccountInfoFailed($errmsg)
@@ -87,5 +87,25 @@ class ResponseController extends Controller
     public static function notFound($msg = "提供的数据查找不到对应数据", $data = null)
     {
         return self::response(20013, 404, $msg, $data);
+    }
+
+    public static function inBlackList()
+    {
+        return self::response(20014, 400, "处于黑名单中");
+    }
+
+    public static function installFailed($message)
+    {
+        return self::response(20015, 500, "安装失败,message: $message");
+    }
+
+    public static function wrongPass()
+    {
+        return self::response(20016, 400, "请检查密码是否正确");
+    }
+
+    public static function accountNotFound()
+    {
+        return self::response(20017, 400, "账号不存在");
     }
 }

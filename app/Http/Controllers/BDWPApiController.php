@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class BDWPApiController extends Controller
 {
@@ -24,7 +25,7 @@ class BDWPApiController extends Controller
 
         if ($accountType === "cookie") {
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
-        } else if ($accountType === "access_token") {
+        } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
         }
 
@@ -58,35 +59,21 @@ class BDWPApiController extends Controller
     }
 
     /**
-     * ↓ 只有是 svip 的账号才能获取到下面的信息
      * {
-     *      "current_product": {
-     *          "cluster": "vip",
-     *          "detail_cluster": "svip",
-     *          "product_type": "vip2_1y",
-     *          "product_id": "1838062032397226670"
-     *      },
-     *      "reminder": {
-     *          "advertiseContent": [],
-     *          "reminderWithContent": [],
-     *          "serverTime": 1730721100,
-     *          "svip": {
-     *                 "leftseconds": 20578099,
-     *                 "nextState": "normal"
-     *          }
-     *      }
+     *      "svip_type": "超级会员",
+     *      "expires_at": 100
      * }
      */
     public static function getSvipEndAt($accountType, $cookieOrAccessToken)
     {
         $req = [
             "headers" => ["User-Agent" => config("hklist.fake_user_agent")],
-            "query" => ["method" => "uinfo"]
+            "query" => ["method" => "query"]
         ];
 
         if ($accountType === "cookie") {
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
-        } else if ($accountType === "access_token") {
+        } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
         }
 
@@ -112,20 +99,28 @@ class BDWPApiController extends Controller
 
         $current_product = $userInfo["current_product_v2"];
         $reminder = $userInfo["reminder"];
+        if (!isset($current_product["detail_cluster"])) {
+            $vip_type = "普通用户";
+            $expires_at = 0;
+        } else if ($current_product["detail_cluster"] == "svip") {
+            $vip_type = "超级会员";
+            $expires_at = $reminder["serverTime"] + $reminder["svip"]["leftseconds"];
+        } else {
+            $vip_type = "普通会员";
+            $expires_at = 0;
+        }
+
         return ResponseController::success([
-            "current_product" => $current_product,
-            "reminder" => $reminder,
+            "vip_type" => $vip_type,
+            "expires_at" => $expires_at
         ]);
     }
 
     /**
      * {
-     *      "expires_in": 2592000,
+     *      "expires_at": 2592000,
      *      "refresh_token": "xxxx",
      *      "access_token": "xxx",
-     *      "session_secret": "",
-     *      "session_key": "",
-     *      "scope": "basic netdisk"
      * }
      */
     public static function getAccessToken($refreshToken)
@@ -149,16 +144,19 @@ class BDWPApiController extends Controller
         if ($data["code"] !== 200) return $res;
 
         $accessToken = $data["data"];
-        if (isset($accessToken["error_description"])) {
-            return ResponseController::getAccessTokenFailed($accessToken["error_description"]);
-        }
+        if (isset($accessToken["error_description"])) return ResponseController::getAccessTokenFailed($accessToken["error_description"]);
 
-        return $res;
+        return ResponseController::success([
+            "expires_at" => now(config("app.timezone"))->addSeconds($accessToken["expires_in"]),
+            "access_token" => $accessToken["access_token"],
+            "refresh_token" => $accessToken["refresh_token"],
+        ]);
     }
 
     /**
      * {
-     *     "cid": 0
+     *     "cid": 0,
+     *     "expires_at": 0
      * }
      */
     public static function getEnterpriseInfo($cookie)
@@ -189,14 +187,17 @@ class BDWPApiController extends Controller
             !isset($enterpriseInfo["show_msg"]) ||
             $enterpriseInfo["errno"] !== 0 ||
             $enterpriseInfo["newno"] !== "" ||
-            $enterpriseInfo["show_msg"] !== "" ||
-            !isset($enterpriseInfo["data"][0]["cid"])
+            $enterpriseInfo["show_msg"] !== ""
         ) {
             return ResponseController::getEnterpriseInfoFailed($enterpriseInfo["show_msg"]);
         }
 
+        if (!isset($enterpriseInfo["data"][0]) || !isset($enterpriseInfo["data"][0]["cid"])) return ResponseController::getEnterpriseInfoFailed("账号不是企业账号,获取cid失败");
+
+        $enterpriseInfoData = $enterpriseInfo["data"][0];
         return ResponseController::success([
-            "cid" => $enterpriseInfo["data"][0]["cid"]
+            "cid" => $enterpriseInfoData["cid"],
+            "expires_at" => $enterpriseInfoData["product_endtime"],
         ]);
     }
 
@@ -219,7 +220,7 @@ class BDWPApiController extends Controller
 
         if ($accountType === "cookie") {
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
-        } else if ($accountType === "access_token") {
+        } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
         }
 

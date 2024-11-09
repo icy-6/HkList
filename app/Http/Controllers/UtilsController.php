@@ -10,6 +10,8 @@ use GuzzleHttp\Exception\ServerException;
 use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use XdbSearcher;
 
@@ -128,5 +130,45 @@ class UtilsController extends Controller
         return ResponseController::success([
             "province" => "上海市"
         ]);
+    }
+
+    public static function updateEnv(array $data)
+    {
+        $envPath = base_path(".env");
+        $contentArray = collect(file($envPath, FILE_IGNORE_NEW_LINES));
+
+        $contentArray->transform(function ($item) use (&$data) {
+            foreach ($data as $key => $value) {
+                if (str_starts_with($item, $key . "=")) {
+                    unset($data[$key]);
+                    if (is_bool($value)) return $key . "=" . ($value ? "true" : "false");
+                    return $key . "=" . $value;
+                }
+            }
+            return $item;
+        });
+
+        if (count($data) !== 0) {
+            $contentArray->add("");
+            foreach ($data as $key => $value) {
+                $contentArray->add($key . "=" . $value);
+            }
+        }
+
+        $content = implode("\n", $contentArray->toArray());
+        File::put($envPath, $content);
+    }
+
+    public static function getVersionString($env_arr): string
+    {
+        return $env_arr->filter(fn($env, $key) => $key === "_94LIST_VERSION")->first() ?? "0.0.0";
+    }
+
+    public static function getEnvFile($env_path): Collection
+    {
+        return collect(explode("\n", File::get($env_path)))
+            ->filter(fn($line) => $line)
+            ->map(fn($line) => explode("=", $line))
+            ->mapWithKeys(fn($item) => [$item[0] => $item[1] ?? ""]);
     }
 }

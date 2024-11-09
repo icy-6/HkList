@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class BlackList extends Model
+class Token extends Model
 {
     protected $fillable = [
-        "type",
-        "identifier",
-        "reason",
+        "token",
+        "count",
+        "size",
+        "day",
+        "ip",
         "expires_at"
     ];
 }

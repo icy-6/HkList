@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // 信任所有代理
         $middleware->trustProxies("*");
+
+        $middleware->alias([
+            "IsInstall" => \App\Http\Middleware\IsInstall::class,
+            "IdentifierFilter" => \App\Http\Middleware\IdentifierFilter::class,
+            "PassFilter" => \App\Http\Middleware\PassFilter::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
