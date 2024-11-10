@@ -9,22 +9,13 @@ use Illuminate\Validation\Rule;
 
 class BlackListController extends Controller
 {
-    public function select(Request $request)
-    {
-        $data = BlackList::query()
-            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
-
-        return ResponseController::success($data);
-    }
-
     public function insert(Request $request)
     {
         $validator = Validator::make($request->post(), [
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
             "reason" => "required|string",
-            "expires_at" => "required|date"
+            "ban_days" => "required|numeric"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -32,25 +23,25 @@ class BlackListController extends Controller
             "type" => $request["type"],
             "identifier" => $request["identifier"],
             "reason" => $request["reason"],
-            "expires_at" => $request["expires_at"]
+            "expires_at" => now(config("app.timezone"))->addDays($request["ban_days"])
         ]);
 
         return ResponseController::success();
     }
 
-    public function delete(Request $request)
+    public function select(Request $request)
     {
         $validator = Validator::make($request->post(), [
-            "id" => "required|array",
-            "id.*" => "required|integer",
+            "column" => ["nullable", "string", Rule::in(BlackList::$attrs)],
+            "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        BlackList::query()
-            ->whereIn("id", $request["id"])
-            ->delete();
+        $data = BlackList::query()
+            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->get();
 
-        return ResponseController::success();
+        return ResponseController::success($data);
     }
 
     public function update(Request $request)
@@ -59,13 +50,13 @@ class BlackListController extends Controller
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
             "reason" => "required|string",
-            "expires_at" => "required|date",
+            "expires_at" => "required|date_format:Y-m-d H:i:s",
             "id" => "required|array",
-            "id.*" => "required|integer",
+            "id.*" => "required|numeric",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        BlackList::query()
+        $count = BlackList::query()
             ->whereIn("id", $request["id"])
             ->update([
                 "type" => $request["type"],
@@ -74,6 +65,29 @@ class BlackListController extends Controller
                 "expires_at" => $request["expires_at"]
             ]);
 
-        return ResponseController::success();
+        if ($count === 0) {
+            return ResponseController::updateFailed();
+        } else {
+            return ResponseController::success();
+        }
+    }
+
+    public function delete(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $count = BlackList::query()
+            ->whereIn("id", $request["id"])
+            ->delete();
+
+        if ($count === 0) {
+            return ResponseController::deleteFailed();
+        } else {
+            return ResponseController::success();
+        }
     }
 }

@@ -16,7 +16,7 @@ class InstallController extends Controller
         $validator = Validator::make($request->all(), [
             "app_name" => "required|string",
             "db_host" => "required|string",
-            "db_port" => "required|string",
+            "db_port" => "required|numeric",
             "db_database" => "required|string",
             "db_username" => "required|string",
             "db_password" => "string",
@@ -33,7 +33,7 @@ class InstallController extends Controller
         $dbConfig['connections']['mysql']["port"] = $request["db_port"];
         $dbConfig['connections']['mysql']["database"] = $request["db_database"];
         $dbConfig['connections']['mysql']["username"] = $request["db_username"];
-        $dbConfig['connections']['mysql']["password"] = $request["db_password"];
+        $dbConfig['connections']['mysql']["password"] = $request["db_password"] ?? "";
 
         // 临时更新配置
         config(['database' => $dbConfig]);
@@ -94,6 +94,7 @@ class InstallController extends Controller
                 $table->unsignedBigInteger("count");
                 $table->unsignedBigInteger("size");
                 $table->unsignedBigInteger("day");
+                $table->unsignedBigInteger("can_use_ip_count");
                 $table->json("ip");
                 $table->timestamp("expires_at")->nullable();
                 $table->timestamps();

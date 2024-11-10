@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class BDWPApiController extends Controller
 {
@@ -27,6 +29,14 @@ class BDWPApiController extends Controller
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
         } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
+        } else {
+            return ResponseController::paramsError([
+                "errors" => [
+                    "accountType" => [
+                        "The accountType is invalid."
+                    ]
+                ]
+            ]);
         }
 
         $res = UtilsController::sendRequest(
@@ -75,6 +85,14 @@ class BDWPApiController extends Controller
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
         } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
+        } else {
+            return ResponseController::paramsError([
+                "errors" => [
+                    "accountType" => [
+                        "The accountType is invalid."
+                    ]
+                ]
+            ]);
         }
 
         $res = UtilsController::sendRequest(
@@ -91,10 +109,10 @@ class BDWPApiController extends Controller
         if (
             !isset($userInfo["error_code"]) ||
             !isset($userInfo["error_msg"]) ||
-            $userInfo["errno"] !== 0 ||
-            $userInfo["errmsg"] !== ""
+            $userInfo["error_code"] !== 0 ||
+            $userInfo["error_msg"] !== ""
         ) {
-            return ResponseController::getSvipAtFailed($userInfo["errmsg"]);
+            return ResponseController::getSvipAtFailed($userInfo["error_msg"]);
         }
 
         $current_product = $userInfo["current_product_v2"];
@@ -222,6 +240,14 @@ class BDWPApiController extends Controller
             $req["headers"]["Cookie"] = $cookieOrAccessToken;
         } else if ($accountType === "open_platform") {
             $req["query"]["access_token"] = $cookieOrAccessToken;
+        } else {
+            return ResponseController::paramsError([
+                "errors" => [
+                    "accountType" => [
+                        "The accountType is invalid."
+                    ]
+                ]
+            ]);
         }
 
         $res = UtilsController::sendRequest(
@@ -277,8 +303,8 @@ class BDWPApiController extends Controller
             "https://pan.baidu.com/share/wxlist",
             [
                 "headers" => [
-                    "User-Agent" => config("94list.fake_wx_user_agent"),
-                    "Cookie" => config("94list.fake_cookie")
+                    "User-Agent" => config("hklist.fake_wx_user_agent"),
+                    "Cookie" => config("hklist.fake_cookie")
                 ],
                 "query" => [
                     "channel" => "weixin",
@@ -315,7 +341,7 @@ class BDWPApiController extends Controller
 
         if ($errno !== 0) {
             if ($errno === -130) {
-                return match ($errtype) {
+                $info = match ($errtype) {
                     0 => "啊哦，你来晚了，分享的文件已经被删除了，下次要早点哟。",
                     1 => "啊哦，你来晚了，分享的文件已经被取消了，下次要早点哟。",
                     2 => "此链接分享内容暂时不可访问",
@@ -331,8 +357,10 @@ class BDWPApiController extends Controller
                     "mis_105" => "surl 错误",
                     "mispw_9", "mispwd-9" => "提取码错误",
                     "mis_2", "mis_4" => "路径错误",
-                    default => ResponseController::getFileListFailed($errno, $errtype)
+                    default => null
                 };
+                if ($info === null) return ResponseController::getFileListFailed($errno, $errtype);
+                return ResponseController::getFileListMsgFailed($info);
             }
 
             return ResponseController::getFileListFailed($errno, $errtype);
@@ -375,8 +403,8 @@ class BDWPApiController extends Controller
             "https://pan.baidu.com/api/getvcode",
             [
                 "headers" => [
-                    "User-Agent" => config("94list.fake_wx_user_agent"),
-                    "Cookie" => config("94list.fake_cookie")
+                    "User-Agent" => config("hklist.fake_user_agent"),
+                    "Cookie" => config("hklist.fake_cookie")
                 ],
                 "query" => [
                     "prod" => "pan"

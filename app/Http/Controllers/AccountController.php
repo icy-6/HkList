@@ -11,15 +11,6 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
-    public function select(Request $request)
-    {
-        $data = Account::query()
-            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
-
-        return ResponseController::success($data);
-    }
-
     public function insert(Request $request)
     {
         // 需要传入 cookie 以及类型
@@ -117,15 +108,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => $accountType,
-            "account_data" => [
+            "account_data" => json_encode([
                 $accountType => $cookieOrAccessToken,
                 "vip_type" => $vipInfoData["vip_type"],
-                "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))
-            ],
+                "expires_at" => $vipInfoData["expires_at"]
+            ]),
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))
+            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -150,15 +141,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "enterprise_cookie",
-            "account_data" => [
+            "account_data" => json_encode([
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
-                "expires_at" => $expires_at
-            ],
+                "expires_at" => $enterpriseInfoData["expires_at"]
+            ]),
             "switch" => $is_expired ? 0 : 1,
             "reason" => $is_expired ? "企业套餐已过期" : "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))
+            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -180,15 +171,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "open_platform",
-            "account_data" => [
+            "account_data" => json_encode([
                 "access_token" => $accessTokenData["access_token"],
                 "refresh_token" => $accessTokenData["refresh_token"],
-                "expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone"))
-            ],
+                "expires_at" => $accessTokenData["expires_at"]
+            ]),
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))
+            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -209,21 +200,31 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "download_ticket",
-            "account_data" => [
+            "account_data" => json_encode([
                 "surl" => $surl,
                 "pwd" => $pwd,
                 "cookie" => $cookie
-            ],
+            ]),
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))
+            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
         ]);
     }
 
-    public function updateInfo(Request $request)
+    public function select(Request $request)
     {
+        $validator = Validator::make($request->post(), [
+            "column" => ["nullable", "string", Rule::in(Account::$attrs)],
+            "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $data = Account::query()
+            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->get();
+
+        return ResponseController::success($data);
     }
 
     const prov = ["北京市", "天津市", "上海市", "重庆市", "河北省", "山西省", "内蒙古自治区", "辽宁省", "吉林省", "黑龙江省", "江苏省", "浙江省", "安徽省", "福建省", "江西省", "山东省", "河南省", "湖北省", "湖南省", "广东省", "广西壮族自治区", "海南省", "四川省", "贵州省", "云南省", "西藏自治区", "陕西省", "甘肃省", "青海省", "宁夏回族自治区", "新疆维吾尔自治区", "香港特别行政区", "澳门特别行政区", "台湾省"];
@@ -234,17 +235,53 @@ class AccountController extends Controller
             "switch" => "required|boolean",
             "prov" => ["nullable", Rule::in(self::prov)],
             "id" => "required|array",
-            "id.*" => "required|integer",
+            "id.*" => "required|numeric",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        Account::query()
+        $count = Account::query()
             ->whereIn("id", $request["id"])
             ->update([
                 "switch" => $request["switch"],
                 "reason" => $request["switch"] ? "手动启用" : "手动禁用",
                 "prov" => $request["prov"]
             ]);
+
+        if ($count === 0) {
+            return ResponseController::updateFailed();
+        } else {
+            return ResponseController::success();
+        }
+    }
+
+    public function updateInfo(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $accounts = Account::query()
+            ->whereIn("id", $request["id"])
+            ->get();
+
+        foreach ($accounts as $account) {
+            $account_type = $account["account_type"];
+            $account_data = json_decode($account["account_data"], true);
+            if ($account_type === "cookie" || $account_type === "access_token") {
+                $data = self::getCookieOrAccessTokenInfo($account_type, $account_data[$account_type]);
+            } else if ($account_type === "enterprise_cookie") {
+                $data = self::getEnterpriseInfo($account_data["cookie"]);
+            } else {
+                // download_ticket
+                $data = self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["cookie"]);
+            }
+            $data = $data->getData(true);
+            if ($data["code"] !== 200) return $data;
+            $data = $data["data"];
+            $account->update($data);
+        }
 
         return ResponseController::success();
     }
@@ -253,12 +290,16 @@ class AccountController extends Controller
     {
         $validator = Validator::make($request->post(), [
             "id" => "required|array",
-            "id.*" => "required|integer",
+            "id.*" => "required|numeric",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        Account::query()->whereIn("id", $request["id"])->delete();
+        $count = Account::query()->whereIn("id", $request["id"])->delete();
 
-        return ResponseController::success();
+        if ($count === 0) {
+            return ResponseController::deleteFailed();
+        } else {
+            return ResponseController::success();
+        }
     }
 }

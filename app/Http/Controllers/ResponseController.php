@@ -79,14 +79,14 @@ class ResponseController extends Controller
         return self::response(20011, 500, "获取分享链接信息失败,errno: $errno, errtype: $errtype");
     }
 
-    public static function getVcodeFailed($errno)
+    public static function getFileListMsgFailed($errmsg)
     {
-        return self::response(20012, 500, "获取验证码图片信息失败,errno: $errno");
+        return self::response(20012, 500, "获取分享链接信息失败,errmsg: $errmsg");
     }
 
-    public static function notFound($msg = "提供的数据查找不到对应数据", $data = null)
+    public static function getVcodeFailed($errno)
     {
-        return self::response(20013, 404, $msg, $data);
+        return self::response(20013, 500, "获取验证码图片信息失败,errno: $errno");
     }
 
     public static function inBlackList()
@@ -104,8 +104,13 @@ class ResponseController extends Controller
         return self::response(20016, 400, "请检查密码是否正确");
     }
 
-    public static function accountNotFound()
+    public static function deleteFailed()
     {
-        return self::response(20017, 400, "账号不存在");
+        return self::response(20017, 400, "删除失败,请检查参数");
+    }
+
+    public static function updateFailed()
+    {
+        return self::response(20017, 400, "删除失败,请检查参数");
     }
 }
