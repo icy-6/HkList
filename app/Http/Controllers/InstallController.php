@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Token;
 use Exception;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Encryption\Encrypter;
@@ -99,6 +100,17 @@ class InstallController extends Controller
                 $table->timestamp("expires_at")->nullable();
                 $table->timestamps();
             });
+
+            // 添加游客
+            Token::query()->create([
+                "token" => "guest",
+                "count" => 10,
+                "size" => 10 * UtilsController::$GB,
+                "day" => 0,
+                "can_use_ip_count" => 0,
+                "ip" => [],
+                "expires_at" => "2099-01-01 00:00:00",
+            ]);
 
             $key = "base64:" . base64_encode(Encrypter::generateKey(config("app.cipher")));
             config(["app.key" => $key]);

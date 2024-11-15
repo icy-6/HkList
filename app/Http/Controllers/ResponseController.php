@@ -113,4 +113,39 @@ class ResponseController extends Controller
     {
         return self::response(20017, 400, "删除失败,请检查参数");
     }
+
+    public static function getProvFailed($ip)
+    {
+        return self::response(20018, 500, "获取 $ip 所在的归属地失败");
+    }
+
+    public static function TokenNotExists()
+    {
+        return self::response(20019, 400, "token不存在");
+    }
+
+    public static function TokenIpHitMax()
+    {
+        return self::response(20020, 400, "token的可用ip数已到达限制");
+    }
+
+    public static function TokenExpired()
+    {
+        return self::response(20021, 400, "token已过期");
+    }
+
+    public static function TokenQuotaHasBeenUsedUp()
+    {
+        return self::response(20022, 400, "token可用容量已用完");
+    }
+
+    public static function parserServerNotDefined()
+    {
+        return self::response(20023, 400, "未完整配置解析服务器");
+    }
+
+    public static function mailServiceIsNotEnable()
+    {
+        return self::response(20024, 400, "未开启邮件服务");
+    }
 }

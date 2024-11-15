@@ -33,7 +33,7 @@ class TokenController extends Controller
                 "size" => $request["size"],
                 "day" => $request["day"],
                 "can_use_ip_count" => $request["can_use_ip_count"],
-                "ip" => json_encode([]),
+                "ip" => [],
                 "expires_at" => null
             ]);
         } else {
@@ -58,7 +58,7 @@ class TokenController extends Controller
                     "size" => $request["size"],
                     "day" => $request["day"],
                     "can_use_ip_count" => $request["can_use_ip_count"],
-                    "ip" => json_encode([]),
+                    "ip" => [],
                     "expires_at" => null
                 ]);
             }
@@ -104,7 +104,7 @@ class TokenController extends Controller
                 "size" => $request["size"],
                 "day" => $request["day"],
                 "can_use_ip_count" => $request["can_use_ip_count"],
-                "ip" => json_encode($request["ip"]),
+                "ip" => $request["ip"],
                 "expires_at" => $request["expires_at"]
             ]);
 

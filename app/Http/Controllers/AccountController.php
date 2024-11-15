@@ -108,15 +108,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => $accountType,
-            "account_data" => json_encode([
+            "account_data" => [
                 $accountType => $cookieOrAccessToken,
                 "vip_type" => $vipInfoData["vip_type"],
                 "expires_at" => $vipInfoData["expires_at"]
-            ]),
+            ],
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
+            "used_at" => now()->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -141,15 +141,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "enterprise_cookie",
-            "account_data" => json_encode([
+            "account_data" => [
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
                 "expires_at" => $enterpriseInfoData["expires_at"]
-            ]),
+            ],
             "switch" => $is_expired ? 0 : 1,
             "reason" => $is_expired ? "企业套餐已过期" : "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
+            "used_at" => now()->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -171,15 +171,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "open_platform",
-            "account_data" => json_encode([
+            "account_data" => [
                 "access_token" => $accessTokenData["access_token"],
                 "refresh_token" => $accessTokenData["refresh_token"],
                 "expires_at" => $accessTokenData["expires_at"]
-            ]),
+            ],
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
+            "used_at" => now()->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -200,15 +200,15 @@ class AccountController extends Controller
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "download_ticket",
-            "account_data" => json_encode([
+            "account_data" => [
                 "surl" => $surl,
                 "pwd" => $pwd,
                 "cookie" => $cookie
-            ]),
+            ],
             "switch" => 1,
             "reason" => "",
             "prov" => null,
-            "used_at" => now(config("app.timezone"))->format("Y-m-d H:i:s")
+            "used_at" => now()->format("Y-m-d H:i:s")
         ]);
     }
 
@@ -268,7 +268,7 @@ class AccountController extends Controller
 
         foreach ($accounts as $account) {
             $account_type = $account["account_type"];
-            $account_data = json_decode($account["account_data"], true);
+            $account_data = $account["account_data"];
             if ($account_type === "cookie" || $account_type === "access_token") {
                 $data = self::getCookieOrAccessTokenInfo($account_type, $account_data[$account_type]);
             } else if ($account_type === "enterprise_cookie") {

@@ -28,4 +28,12 @@ class Account extends Model
         "prov",
         "used_at"
     ];
+
+    protected function casts(): array
+    {
+        return [
+            "account_data" => "json",
+            "used_at" => "datetime"
+        ];
+    }
 }

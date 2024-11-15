@@ -20,4 +20,11 @@ class BlackList extends Model
         "reason",
         "expires_at"
     ];
+
+    protected function casts(): array
+    {
+        return [
+            "expires_at" => "datetime"
+        ];
+    }
 }

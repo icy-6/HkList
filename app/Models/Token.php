@@ -26,4 +26,12 @@ class Token extends Model
         "ip",
         "expires_at"
     ];
+
+    protected function casts(): array
+    {
+        return [
+            "ip" => "json",
+            "expires_at" => "datetime",
+        ];
+    }
 }

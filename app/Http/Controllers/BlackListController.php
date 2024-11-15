@@ -23,7 +23,7 @@ class BlackListController extends Controller
             "type" => $request["type"],
             "identifier" => $request["identifier"],
             "reason" => $request["reason"],
-            "expires_at" => now(config("app.timezone"))->addDays($request["ban_days"])
+            "expires_at" => now()->addDays($request["ban_days"])
         ]);
 
         return ResponseController::success();

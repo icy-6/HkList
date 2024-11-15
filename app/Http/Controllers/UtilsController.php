@@ -6,11 +6,10 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Database\Eloquent\Casts\Json;
-use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use XdbSearcher;
@@ -33,11 +32,11 @@ class UtilsController extends Controller
         }
     }
 
-    public static function sendRequest($actionName, $requestMethod, $requestUrl, $requestParams)
+    public static function sendRequest($actionName, $requestMethod, $requestUrl, $requestOptions)
     {
         $http = new Client();
         try {
-            $res = $http->request($requestMethod, $requestUrl, $requestParams);
+            $res = $http->request($requestMethod, $requestUrl, $requestOptions);
             $data = Json::decode($res->getBody()->getContents()) ?? null;
             return ResponseController::success($data);
         } catch (ConnectException $e) {
@@ -48,7 +47,7 @@ class UtilsController extends Controller
         } catch (ServerException $e) {
             $data = ["body" => $e->getResponse()->getBody()->getContents()];
             return ResponseController::requestServerError($actionName, $data);
-        } catch (Exception $e) {
+        } catch (Exception|GuzzleException $e) {
             return ResponseController::unknownError($actionName, $e);
         }
     }
@@ -58,7 +57,7 @@ class UtilsController extends Controller
         $seckey = str_replace("-", "+", $seckey);
         $seckey = str_replace("~", "=", $seckey);
         $seckey = str_replace("_", "/", $seckey);
-        return $seckey;
+        return ResponseController::success(["seckey" => $seckey]);
     }
 
     // 省份标准名称映射表
@@ -104,35 +103,34 @@ class UtilsController extends Controller
     public static function getProvinces($ip)
     {
         if (!self::$ip2region) self::$ip2region = new XdbSearcher();
-        if ($ip === "0.0.0.0" || $ip === "::1") {
-            $prov = "上海市";
-        } else {
-            try {
-                $result = self::$ip2region->search($ip);
-                if (!$result) {
-                    $prov = "上海市";
-                } else {
-                    $prov = explode("|", $result)[2];
-                }
-            } catch (Exception $exception) {
-                $prov = "上海市";
-            }
+
+        try {
+            $result = self::$ip2region->search($ip);
+            if (!$result) return ResponseController::getProvFailed($ip);
+        } catch (Exception $exception) {
+            return ResponseController::getProvFailed($ip);
         }
+
+        $arr = explode("|", $result);
+        $country = $arr[0];
+        $prov = $arr[2];
 
         foreach (self::provinces as $key => $standardName) {
             if (str_contains($prov, $key)) {
                 return ResponseController::success([
-                    "province" => $standardName
+                    "province" => $standardName,
+                    "isCn" => true
                 ]);
             }
         }
 
         return ResponseController::success([
-            "province" => "上海市"
+            "province" => $prov !== "0" ? $prov : "海外",
+            "isCn" => $country === "中国"
         ]);
     }
 
-    public static function updateEnv(array $data)
+    public static function updateEnv($data)
     {
         $envPath = base_path(".env");
         $contentArray = collect(file($envPath, FILE_IGNORE_NEW_LINES));
@@ -141,8 +139,13 @@ class UtilsController extends Controller
             foreach ($data as $key => $value) {
                 if (str_starts_with($item, $key . "=")) {
                     unset($data[$key]);
-                    if (is_bool($value)) return $key . "=" . ($value ? "true" : "false");
-                    return $key . "=" . $value;
+                    if (is_bool($value)) {
+                        return $key . "=" . ($value ? "true" : "false");
+                    } else if (is_string($value)) {
+                        return $key . "=" . '"' . $value . '"';
+                    } else {
+                        return $key . "=" . $value;
+                    }
                 }
             }
             return $item;
@@ -157,18 +160,24 @@ class UtilsController extends Controller
 
         $content = implode("\n", $contentArray->toArray());
         File::put($envPath, $content);
+
+        return ResponseController::success();
     }
 
-    public static function getVersionString($env_arr): string
+    public static function getVersionString($env_arr)
     {
-        return $env_arr->filter(fn($env, $key) => $key === "_94LIST_VERSION")->first() ?? "0.0.0";
+        $version = $env_arr->filter(fn($env, $key) => $key === "_94LIST_VERSION")->first() ?? "0.0.0";
+        return ResponseController::success(["version" => $version]);
     }
 
-    public static function getEnvFile($env_path): Collection
+    public static function getEnvFile($env_path)
     {
-        return collect(explode("\n", File::get($env_path)))
+        $data = collect(explode("\n", File::get($env_path)))
             ->filter(fn($line) => $line)
             ->map(fn($line) => explode("=", $line))
             ->mapWithKeys(fn($item) => [$item[0] => $item[1] ?? ""]);
+        return ResponseController::success($data);
     }
+
+    public static int $GB = 1073741824;
 }

@@ -165,7 +165,7 @@ class BDWPApiController extends Controller
         if (isset($accessToken["error_description"])) return ResponseController::getAccessTokenFailed($accessToken["error_description"]);
 
         return ResponseController::success([
-            "expires_at" => now(config("app.timezone"))->addSeconds($accessToken["expires_in"]),
+            "expires_at" => now()->addSeconds($accessToken["expires_in"]),
             "access_token" => $accessToken["access_token"],
             "refresh_token" => $accessToken["refresh_token"],
         ]);
@@ -361,15 +361,21 @@ class BDWPApiController extends Controller
                 };
                 if ($info === null) return ResponseController::getFileListFailed($errno, $errtype);
                 return ResponseController::getFileListMsgFailed($info);
+            } else if ($errno === 2) {
+                return ResponseController::getFileListMsgFailed("surl错误");
             }
 
             return ResponseController::getFileListFailed($errno, $errtype);
         }
 
+        $seckey = UtilsController::decodeSecKey($response["data"]["seckey"]);
+        $seckeyData = $seckey->getData(true);
+        if ($seckeyData["code"] !== 200) return $seckey;
+
         return ResponseController::success([
             "uk" => $response["data"]["uk"],
             "shareid" => $response["data"]["shareid"],
-            "randsk" => UtilsController::decodeSecKey($response["data"]["seckey"]),
+            "randsk" => $seckeyData["data"]["seckey"],
             "list" => collect($response["data"]["list"])->map(function ($item) {
                 return [
                     "category" => (int)$item["category"],
@@ -377,7 +383,7 @@ class BDWPApiController extends Controller
                     "isdir" => (int)$item["isdir"],
                     "local_ctime" => (double)$item["local_ctime"],
                     "local_mtime" => (double)$item["local_mtime"],
-                    "md5" => $item["md5"],
+                    "md5" => $item["md5"] ?? "",
                     "path" => $item["path"],
                     "server_ctime" => (double)$item["server_ctime"],
                     "server_mtime" => (double)$item["server_mtime"],
@@ -424,8 +430,8 @@ class BDWPApiController extends Controller
         }
 
         return ResponseController::success([
-            "vcode_str" => $response["data"]["vcode"],
-            "vcode_img" => $response["data"]["img"],
+            "vcode_str" => $response["vcode"],
+            "vcode_img" => $response["img"],
         ]);
     }
 }

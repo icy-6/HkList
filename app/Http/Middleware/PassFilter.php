@@ -14,11 +14,18 @@ class PassFilter
      *
      * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, $role): Response
     {
-        $pass = config("hklist.admin_password");
-        if (!$pass) return $next($request);
-        if ($pass !== $request["admin_password"]) return ResponseController::wrongPass();
+        if ($role === "ADMIN") {
+            $pass = config("hklist.general.admin_password");
+            if (!$pass) return $next($request);
+            if ($pass !== $request["admin_password"]) return ResponseController::wrongPass();
+        } else if ($role === "USER") {
+            $pass = config("hklist.general.parse_password");
+            if (!$pass) return $next($request);
+            if ($pass !== $request["parse_password"]) return ResponseController::wrongPass();
+        }
+
         return $next($request);
     }
 }

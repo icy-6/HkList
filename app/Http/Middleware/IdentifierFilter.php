@@ -18,11 +18,11 @@ class IdentifierFilter
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $ip = BlackList::query()->firstWhere(["type" => "ip", "identifier" => $request->ip()]);
-        if ($ip) return ResponseController::inBlackList();
-
         // debug 时不校验
         if (!config("app.debug")) {
+            $ip = BlackList::query()->firstWhere(["type" => "ip", "identifier" => $request->ip()]);
+            if ($ip) return ResponseController::inBlackList();
+
             $validator = Validator::make($request->all(), ["fingerprint" => "required|string"]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
             $fingerprint = BlackList::query()->firstWhere(["type" => "fingerprint", "identifier" => $request["fingerprint"]]);

@@ -11,6 +11,7 @@ class FileList extends Model
         "surl",
         "pwd",
         "fs_id",
+        "size",
         "filename"
     ];
 
@@ -18,6 +19,7 @@ class FileList extends Model
         "surl",
         "pwd",
         "fs_id",
+        "size",
         "filename"
     ];
 }
