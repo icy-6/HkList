@@ -34,6 +34,8 @@ class TokenController extends Controller
                 "day" => $request["day"],
                 "can_use_ip_count" => $request["can_use_ip_count"],
                 "ip" => [],
+                "switch" => true,
+                "reason" => "",
                 "expires_at" => null
             ]);
         } else {
@@ -59,6 +61,8 @@ class TokenController extends Controller
                     "day" => $request["day"],
                     "can_use_ip_count" => $request["can_use_ip_count"],
                     "ip" => [],
+                    "switch" => true,
+                    "reason" => "",
                     "expires_at" => null
                 ]);
             }
@@ -90,8 +94,10 @@ class TokenController extends Controller
             "day" => "required|numeric",
             "can_use_ip_count" => "required|numeric",
             "ip" => "array",
-            "ip.*" => "numeric|string",
+            "ip.*" => "required|string",
             "expires_at" => "required|date",
+            "switch" => "required|boolean",
+            "reason" => "nullable|string",
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);

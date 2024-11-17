@@ -19,6 +19,13 @@ class BlackListController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $blackList = BlackList::query()->firstWhere([
+            "type" => $request["type"],
+            "identifier" => $request["identifier"],
+        ]);
+
+        if ($blackList) return ResponseController::blackListExists();
+
         BlackList::query()->create([
             "type" => $request["type"],
             "identifier" => $request["identifier"],

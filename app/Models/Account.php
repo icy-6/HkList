@@ -33,6 +33,7 @@ class Account extends Model
     {
         return [
             "account_data" => "json",
+            "switch" => "boolean",
             "used_at" => "datetime"
         ];
     }

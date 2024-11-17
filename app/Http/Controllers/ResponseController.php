@@ -148,4 +148,9 @@ class ResponseController extends Controller
     {
         return self::response(20024, 400, "未开启邮件服务");
     }
+
+    public static function blackListExists()
+    {
+        return self::response(20025, 400, "该特征已存在");
+    }
 }

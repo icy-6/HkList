@@ -1,5 +1,17 @@
 # 2024
 
+## 11-17 v2.0-dev
+
+- [*] 优化 `accounts` 表 中字段 `switch` 类型为 `boolean`
+- [+] 增加 `AccountController` 中 `download_ticket` 类型缺少的字段
+- [*] 修正 `AccountController` 中 `插入账号` 的逻辑错误
+- [+] 增加 `tokens` 表中字段 `switch` `reason`
+- [*] 修正 `TokenController` 中 `传入数据` 的验证逻辑错误
+- [*] 优化 `BDWPApiController` 返回的 `isdir` 为 `boolean`
+- [-] 去除 `ParserController` 多余字段
+- [*] 替换 `accounts` `black_lists` `tokens` 表中类型为 `timestamp` 的字段类型为 `datetime`
+- [*] 修正 `BlackListController` 缺少的重复判断
+
 ## 11-15 v2.0-dev
 
 - [+] 完成管理配置接口

@@ -14,6 +14,8 @@ class Token extends Model
         "day",
         "can_use_ip_count",
         "ip",
+        "switch",
+        "reason",
         "expires_at"
     ];
 
@@ -24,6 +26,8 @@ class Token extends Model
         "day",
         "can_use_ip_count",
         "ip",
+        "switch",
+        "reason",
         "expires_at"
     ];
 
@@ -32,6 +36,7 @@ class Token extends Model
         return [
             "ip" => "json",
             "expires_at" => "datetime",
+            "switch" => "boolean"
         ];
     }
 }

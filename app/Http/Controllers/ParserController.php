@@ -60,7 +60,6 @@ class ParserController extends Controller
             }
 
             return ResponseController::success([
-                "token" => $token["token"],
                 "count" => $token["count"] - $records["count"],
                 "size" => $token["size"] - $records["size"],
                 "expires_at" => $token["expires_at"]
@@ -85,7 +84,6 @@ class ParserController extends Controller
         if ($records["count"] >= $token["count"] || $records["size"] >= $token["size"] * 1073741824) return ResponseController::TokenQuotaHasBeenUsedUp();
 
         return ResponseController::success([
-            "group_name" => $token["name"],
             "count" => $token["count"] - $records["count"],
             "size" => $token["size"] - $records["size"],
             "expires_at" => $token["expires_at"] ?? "未使用"

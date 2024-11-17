@@ -42,11 +42,12 @@ class AccountController extends Controller
 
             foreach ($accountData as $accountDatum) {
                 if ($accountType === "cookie") {
-                    $accountInfo = self::getCookieOrAccessTokenInfo($accountType, $accountDatum[$accountType]);
-                } else if ($accountType === "open_platform") {
-                    $accountInfo = self::getAccessTokenInfo($accountDatum["refresh_token"]);
-                } else {
+                    $accountInfo = self::getCookieOrAccessTokenInfo("cookie", $accountDatum["cookie"]);
+                } else if ($accountType === "enterprise_cookie") {
                     $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"]);
+                } else {
+                    // open_platform
+                    $accountInfo = self::getAccessTokenInfo($accountDatum["refresh_token"]);
                 }
                 $accountInfoData = $accountInfo->getData(true);
                 if ($accountInfoData["code"] !== 200) return $accountInfo;
@@ -71,12 +72,14 @@ class AccountController extends Controller
                 "account_data.*" => "required|array",
                 "account_data.*.surl" => "required|string",
                 "account_data.*.pwd" => "required|string",
-                "account_data.*.cookie" => "required|string",
+                "account_data.*.dir" => "required|string",
+                "account_data.*.save_cookie" => "required|string",
+                "account_data.*.download_cookie" => "required|string",
             ]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
             foreach ($accountData as $accountDatum) {
-                $accountInfo = self::getDownLoadTicketInfo($accountDatum["surl"], $accountDatum["pwd"], $accountDatum["cookie"]);
+                $accountInfo = self::getDownLoadTicketInfo($accountDatum["surl"], $accountDatum["pwd"], $accountDatum["dir"], $accountDatum["save_cookie"], $accountDatum["download_cookie"]);
                 $accountInfoData = $accountInfo->getData(true);
                 if ($accountInfoData["code"] !== 200) return $accountInfo;
                 $accountInfoData = $accountInfoData["data"];
@@ -111,7 +114,7 @@ class AccountController extends Controller
             "account_data" => [
                 $accountType => $cookieOrAccessToken,
                 "vip_type" => $vipInfoData["vip_type"],
-                "expires_at" => $vipInfoData["expires_at"]
+                "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))
             ],
             "switch" => 1,
             "reason" => "",
@@ -144,7 +147,7 @@ class AccountController extends Controller
             "account_data" => [
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
-                "expires_at" => $enterpriseInfoData["expires_at"]
+                "expires_at" => $expires_at
             ],
             "switch" => $is_expired ? 0 : 1,
             "reason" => $is_expired ? "企业套餐已过期" : "",
@@ -162,7 +165,7 @@ class AccountController extends Controller
         $accessTokenData = $accessTokenData["data"];
 
         // 获取账户信息
-        $accountInfo = BDWPApiController::getAccountInfo("open_platform", $accessTokenData["access_token"]);
+        $accountInfo = self::getCookieOrAccessTokenInfo("open_platform", $accessTokenData["access_token"]);
         $accountInfoData = $accountInfo->getData(true);
         if ($accountInfoData["code"] !== 200) return $accountInfo;
         $accountInfoData = $accountInfoData["data"];
@@ -174,7 +177,8 @@ class AccountController extends Controller
             "account_data" => [
                 "access_token" => $accessTokenData["access_token"],
                 "refresh_token" => $accessTokenData["refresh_token"],
-                "expires_at" => $accessTokenData["expires_at"]
+                "token_expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone")),
+                ...$accountInfoData["account_data"]
             ],
             "switch" => 1,
             "reason" => "",
@@ -183,27 +187,33 @@ class AccountController extends Controller
         ]);
     }
 
-    private function getDownLoadTicketInfo($surl, $pwd, $cookie)
+    private function getDownLoadTicketInfo($surl, $pwd, $dir, $save_cookie, $download_cookie)
     {
         // 只需检查cookie是否有效
-        $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
-        $accountInfoData = $accountInfo->getData(true);
-        if ($accountInfoData["code"] !== 200) return $accountInfo;
-        $accountInfoData = $accountInfoData["data"];
+        $saveAccountInfo = BDWPApiController::getAccountInfo("cookie", $save_cookie);
+        $saveAccountInfoData = $saveAccountInfo->getData(true);
+        if ($saveAccountInfoData["code"] !== 200) return $saveAccountInfo;
+
+        $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
+        $downloadAccountInfoData = $downloadAccountInfo->getData(true);
+        if ($downloadAccountInfoData["code"] !== 200) return $downloadAccountInfo;
+        $downloadAccountInfoData = $downloadAccountInfoData["data"];
 
         // 检查链接是否有效
-        $fileList = BDWPApiController::getFileList($surl, $pwd);
+        $fileList = BDWPApiController::getFileList($surl, $pwd, $dir);
         $fileListData = $fileList->getData(true);
         if ($fileListData["code"] !== 200) return $fileListData;
 
         return ResponseController::success([
-            "baidu_name" => $accountInfoData["baidu_name"],
-            "uk" => $accountInfoData["uk"],
+            "baidu_name" => $downloadAccountInfoData["baidu_name"],
+            "uk" => $downloadAccountInfoData["uk"],
             "account_type" => "download_ticket",
             "account_data" => [
                 "surl" => $surl,
                 "pwd" => $pwd,
-                "cookie" => $cookie
+                "dir" => $dir,
+                "save_cookie" => $save_cookie,
+                "download_cookie" => $download_cookie
             ],
             "switch" => 1,
             "reason" => "",
@@ -275,7 +285,7 @@ class AccountController extends Controller
                 $data = self::getEnterpriseInfo($account_data["cookie"]);
             } else {
                 // download_ticket
-                $data = self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["cookie"]);
+                $data = self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"]);
             }
             $data = $data->getData(true);
             if ($data["code"] !== 200) return $data;
