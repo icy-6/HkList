@@ -109,7 +109,7 @@ class ParserController extends Controller
         $fileListData = $fileListData["data"];
 
         foreach ($fileListData["list"] as $file) {
-            if ($file["isdir"] === 1) continue;
+            if ($file["is_dir"]) continue;
 
             $find = FileList::query()->firstWhere([
                 "surl" => $request["surl"],

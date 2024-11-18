@@ -1,5 +1,10 @@
 # 2024
 
+## 11-18 v2.0-dev
+
+- [+] 增加 后台管理密码校验接口
+- [*] 优化 `BDWPApiController` `isdir` 字段为 `is_dir`
+
 ## 11-17 v2.0-dev
 
 - [*] 优化 `accounts` 表 中字段 `switch` 类型为 `boolean`

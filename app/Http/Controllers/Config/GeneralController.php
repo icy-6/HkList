@@ -18,17 +18,17 @@ class GeneralController extends Controller
     public function updateConfig(Request $request)
     {
         $validator = Validator::make($request->post(), [
-            "admin_password" => "required|string",
-            "parse_password" => "required|string",
+            "new_admin_password" => "nullable|string",
+            "parse_password" => "nullable|string",
             "show_announce" => "required|boolean",
-            "announce" => "required|string",
-            "custom_button" => "required|string"
+            "announce" => "nullable|string",
+            "custom_button" => "nullable|string"
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         UtilsController::updateEnv([
-            "HKLIST_ADMIN_PASSWORD" => $request["admin_password"],
+            "HKLIST_ADMIN_PASSWORD" => $request["new_admin_password"],
             "HKLIST_PARSE_PASSWORD" => $request["parse_password"],
             "HKLIST_SHOWANNOUNCE" => $request["show_announce"],
             "HKLIST_ANNOUNCE" => $request["announce"],

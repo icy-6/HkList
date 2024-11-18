@@ -99,9 +99,9 @@ class ResponseController extends Controller
         return self::response(20015, 500, "安装失败,message: $message");
     }
 
-    public static function wrongPass()
+    public static function wrongPass($role)
     {
-        return self::response(20016, 400, "请检查密码是否正确");
+        return self::response(20016, 400, "请检查 $role 密码是否正确");
     }
 
     public static function deleteFailed()

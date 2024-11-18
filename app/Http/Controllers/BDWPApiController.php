@@ -282,7 +282,7 @@ class BDWPApiController extends Controller
      *     "list": {
      *         "category": 0,
      *         "fs_id": 0,
-     *         "isdir": true,
+     *         "is_dir": true,
      *         "local_ctime": 0,
      *         "local_mtime": 0,
      *         "md5": "xxx",
@@ -380,7 +380,7 @@ class BDWPApiController extends Controller
                 return [
                     "category" => (int)$item["category"],
                     "fs_id" => (double)$item["fs_id"],
-                    "isdir" => ((int)$item["isdir"]) === 1,
+                    "is_dir" => ((int)$item["isdir"]) === 1,
                     "local_ctime" => (double)$item["local_ctime"],
                     "local_mtime" => (double)$item["local_mtime"],
                     "md5" => $item["md5"] ?? "",

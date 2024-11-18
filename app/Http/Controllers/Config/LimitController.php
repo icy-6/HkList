@@ -18,7 +18,7 @@ class LimitController extends Controller
     public function updateConfig(Request $request)
     {
         $validator = Validator::make($request->post(), [
-            "max_once" => "required|string",
+            "max_once" => "required|numeric",
             "min_single_filesize" => "required|numeric",
             "max_single_filesize" => "required|numeric",
             "limit_cn" => "required|boolean",

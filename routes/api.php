@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BlackListController;
+use App\Http\Controllers\CheckPasswordController;
 use App\Http\Controllers\Config\GeneralController;
 use App\Http\Controllers\Config\LimitController;
 use App\Http\Controllers\Config\MailController;
@@ -25,6 +26,7 @@ Route::prefix("/v1")->group(function () {
             });
         });
 
+        Route::post("/admin/check_password", [CheckPasswordController::class, "checkPassword"]);
         Route::prefix("/admin")->middleware(["PassFilter:ADMIN"])->group(function () {
             Route::prefix("/account")->group(function () {
                 Route::get("/", [AccountController::class, "select"]);

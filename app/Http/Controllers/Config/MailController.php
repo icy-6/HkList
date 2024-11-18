@@ -12,7 +12,18 @@ class MailController extends Controller
 {
     public function getConfig()
     {
-        return ResponseController::success(config("mail"));
+        $config = config('mail');
+        return ResponseController::success([
+            "mail_switch" => $config["switch"],
+            "mail_host" => $config["mailers"]["smtp"]["host"],
+            "mail_port" => $config["mailers"]["smtp"]["port"],
+            "mail_username" => $config["mailers"]["smtp"]["username"],
+            "mail_password" => $config["mailers"]["smtp"]["password"],
+            "mail_from_address" => $config["from"]["address"],
+            "mail_from_name" => $config["from"]["name"],
+            "mail_to_address" => $config["to"]["address"],
+            "mail_to_name" => $config["to"]["name"]
+        ]);
     }
 
     public function updateConfig(Request $request)

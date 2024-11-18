@@ -6,17 +6,19 @@ use Illuminate\Http\Request;
 
 class ParserApiController extends Controller
 {
+    /**
+     * {
+     *     "status": true,
+     *     "expires_at": "2025-09-10 23:59:59"
+     * }
+     */
     public static function getAuthInfo($parser_server, $parser_password)
     {
         $res = UtilsController::sendRequest(
             "BDWPApiController::getAccessToken",
             "get",
             "$parser_server/api/test_auth",
-            [
-                "json" => [
-                    "token" => $parser_password,
-                ]
-            ]
+            ["json" => ["token" => $parser_password]]
         );
 
         $data = $res->getData(true);
