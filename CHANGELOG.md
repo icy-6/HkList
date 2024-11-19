@@ -1,5 +1,12 @@
 # 2024
 
+## 11-19 v2.0-dev
+
+- [*] 修复 `AccountController` 中 `插入账户` 和 `更新账户` 错误的逻辑
+- [*] 优化 `ParserController` 中 `游客` 额度逻辑
+- [*] 修复 `ParserController` 中 `卡密` 额度逻辑错误
+- [*] 修复 `TokenController` 中 `卡密` 字段缺失问题
+
 ## 11-18 v2.0-dev
 
 - [+] 增加 后台管理密码校验接口

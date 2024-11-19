@@ -18,11 +18,11 @@ class PassFilter
     {
         if ($role === "ADMIN") {
             $pass = config("hklist.general.admin_password");
-            if (!$pass) return $next($request);
+            if ($pass === "") return $next($request);
             if ($pass !== $request["admin_password"]) return ResponseController::wrongPass("管理员");
         } else if ($role === "USER") {
             $pass = config("hklist.general.parse_password");
-            if (!$pass) return $next($request);
+            if ($pass === "") return $next($request);
             if ($pass !== $request["parse_password"]) return ResponseController::wrongPass("解析");
         }
 

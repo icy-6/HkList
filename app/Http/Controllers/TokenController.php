@@ -89,17 +89,17 @@ class TokenController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
             "count" => "required|numeric",
             "size" => "required|numeric",
             "day" => "required|numeric",
             "can_use_ip_count" => "required|numeric",
-            "ip" => "array",
+            "ip" => "nullable|array",
             "ip.*" => "required|string",
-            "expires_at" => "required|date",
+            "expires_at" => "required|date_format:Y-m-d H:i:s",
             "switch" => "required|boolean",
-            "reason" => "nullable|string",
-            "id" => "required|array",
-            "id.*" => "required|numeric",
+            "reason" => "nullable|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -111,7 +111,9 @@ class TokenController extends Controller
                 "day" => $request["day"],
                 "can_use_ip_count" => $request["can_use_ip_count"],
                 "ip" => $request["ip"],
-                "expires_at" => $request["expires_at"]
+                "expires_at" => $request["expires_at"],
+                "switch" => $request["switch"],
+                "reason" => $request["reason"]
             ]);
 
         if ($count === 0) {

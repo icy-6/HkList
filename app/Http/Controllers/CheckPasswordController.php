@@ -16,6 +16,7 @@ class CheckPasswordController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $admin_password = config("hklist.general.admin_password");
+        if ($admin_password === "") return ResponseController::success();
         if ($admin_password !== $request["admin_password"]) return ResponseController::wrongPass("管理员");
         return ResponseController::success();
     }

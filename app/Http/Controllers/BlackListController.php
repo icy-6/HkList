@@ -54,12 +54,12 @@ class BlackListController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
             "reason" => "required|string",
-            "expires_at" => "required|date_format:Y-m-d H:i:s",
-            "id" => "required|array",
-            "id.*" => "required|numeric",
+            "expires_at" => "required|date_format:Y-m-d H:i:s"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 

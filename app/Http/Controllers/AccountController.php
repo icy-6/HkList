@@ -8,92 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use voku\helper\ASCII;
 
 class AccountController extends Controller
 {
-    public function insert(Request $request)
-    {
-        // 需要传入 cookie 以及类型
-        $validator = Validator::make($request->post(), [
-            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")]
-        ]);
-
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-        $have_repeat = false;
-        $accountType = $request["account_type"];
-        $accountData = $request["account_data"];
-        if ($accountType === "cookie" || $accountType === "enterprise_cookie" || $accountType === "open_platform") {
-            if ($accountType === "cookie" || $accountType === "enterprise_cookie") {
-                $validator = Validator::make($request->post(), [
-                    "account_data" => "required|array",
-                    "account_data.*" => "required|array",
-                    "account_data.*.cookie" => "required|string",
-                ]);
-            } else {
-                // open_platform
-                $validator = Validator::make($request->post(), [
-                    "account_data" => "required|array",
-                    "account_data.*" => "required|array",
-                    "account_data.*.refresh_token" => "required|string",
-                ]);
-            }
-            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-            foreach ($accountData as $accountDatum) {
-                if ($accountType === "cookie") {
-                    $accountInfo = self::getCookieOrAccessTokenInfo("cookie", $accountDatum["cookie"]);
-                } else if ($accountType === "enterprise_cookie") {
-                    $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"]);
-                } else {
-                    // open_platform
-                    $accountInfo = self::getAccessTokenInfo($accountDatum["refresh_token"]);
-                }
-                $accountInfoData = $accountInfo->getData(true);
-                if ($accountInfoData["code"] !== 200) return $accountInfo;
-                $accountInfoData = $accountInfoData["data"];
-
-                $account = Account::query()
-                    ->where([
-                        "account_type" => $accountType,
-                        "uk" => $accountInfoData["uk"]
-                    ])
-                    ->exists();
-                if ($account) {
-                    $have_repeat = true;
-                    continue;
-                }
-
-                Account::query()->create($accountInfoData);
-            }
-        } else if ($accountType === "download_ticket") {
-            $validator = Validator::make($request->post(), [
-                "account_data" => "required|array",
-                "account_data.*" => "required|array",
-                "account_data.*.surl" => "required|string",
-                "account_data.*.pwd" => "required|string",
-                "account_data.*.dir" => "required|string",
-                "account_data.*.save_cookie" => "required|string",
-                "account_data.*.download_cookie" => "required|string",
-            ]);
-            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-            foreach ($accountData as $accountDatum) {
-                $accountInfo = self::getDownLoadTicketInfo($accountDatum["surl"], $accountDatum["pwd"], $accountDatum["dir"], $accountDatum["save_cookie"], $accountDatum["download_cookie"]);
-                $accountInfoData = $accountInfo->getData(true);
-                if ($accountInfoData["code"] !== 200) return $accountInfo;
-                $accountInfoData = $accountInfoData["data"];
-
-                Account::query()->create($accountInfoData);
-            }
-        }
-
-        return ResponseController::success([
-            "have_repeat" => $have_repeat
-        ]);
-    }
-
-    private function getCookieOrAccessTokenInfo($accountType, $cookieOrAccessToken)
+    private function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
     {
         // 获取账户信息
         $accountInfo = BDWPApiController::getAccountInfo($accountType, $cookieOrAccessToken);
@@ -149,14 +68,14 @@ class AccountController extends Controller
                 "cid" => $enterpriseInfoData["cid"],
                 "expires_at" => $expires_at
             ],
-            "switch" => $is_expired ? 0 : 1,
+            "switch" => !$is_expired,
             "reason" => $is_expired ? "企业套餐已过期" : "",
             "prov" => null,
             "used_at" => now()->format("Y-m-d H:i:s")
         ]);
     }
 
-    private function getAccessTokenInfo($refresh_token)
+    private function getOpenPlatformInfo($refresh_token)
     {
         // 刷新token
         $accessToken = BDWPApiController::getAccessToken($refresh_token);
@@ -165,7 +84,7 @@ class AccountController extends Controller
         $accessTokenData = $accessTokenData["data"];
 
         // 获取账户信息
-        $accountInfo = self::getCookieOrAccessTokenInfo("open_platform", $accessTokenData["access_token"]);
+        $accountInfo = self::getCookieOrOpenPlatformInfo("open_platform", $accessTokenData["access_token"]);
         $accountInfoData = $accountInfo->getData(true);
         if ($accountInfoData["code"] !== 200) return $accountInfo;
         $accountInfoData = $accountInfoData["data"];
@@ -192,11 +111,11 @@ class AccountController extends Controller
         // 只需检查cookie是否有效
         $saveAccountInfo = BDWPApiController::getAccountInfo("cookie", $save_cookie);
         $saveAccountInfoData = $saveAccountInfo->getData(true);
-        if ($saveAccountInfoData["code"] !== 200) return $saveAccountInfo;
+        if ($saveAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("save_cookie:" . $saveAccountInfoData["message"]);
 
         $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
         $downloadAccountInfoData = $downloadAccountInfo->getData(true);
-        if ($downloadAccountInfoData["code"] !== 200) return $downloadAccountInfo;
+        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("save_cookie:" . $downloadAccountInfoData["message"]);
         $downloadAccountInfoData = $downloadAccountInfoData["data"];
 
         // 检查链接是否有效
@@ -219,6 +138,145 @@ class AccountController extends Controller
             "reason" => "",
             "prov" => null,
             "used_at" => now()->format("Y-m-d H:i:s")
+        ]);
+    }
+
+    public function insert(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")]
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        return match ($request["account_type"]) {
+            "cookie" => self::insert_cookie($request),
+            "enterprise_cookie" => self::insert_enterprise_cookie($request),
+            "open_platform" => self::insert_open_platform($request),
+            "download_ticket" => self::insert_download_ticket($request),
+        };
+    }
+
+    private function insert_cookie(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "account_data" => "required|array",
+            "account_data.*" => "required|array",
+            "account_data.*.cookie" => "required|string",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $have_repeat = false;
+        foreach ($request["account_data"] as $accountDatum) {
+            $accountInfo = self::getCookieOrOpenPlatformInfo("cookie", $accountDatum["cookie"]);
+            $accountInfoData = $accountInfo->getData(true);
+            if ($accountInfoData["code"] !== 200) return $accountInfo;
+            $accountInfoData = $accountInfoData["data"];
+
+            $account = Account::query()->firstWhere(["account_type" => "cookie", "uk" => $accountInfoData["uk"]]);
+            if ($account) {
+                $have_repeat = true;
+                continue;
+            }
+
+            Account::query()->create($accountInfoData);
+        }
+
+        return ResponseController::success([
+            "have_repeat" => $have_repeat
+        ]);
+    }
+
+    private function insert_enterprise_cookie(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "account_data" => "required|array",
+            "account_data.*" => "required|array",
+            "account_data.*.cookie" => "required|string",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $have_repeat = false;
+        foreach ($request["account_data"] as $accountDatum) {
+            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"]);
+            $accountInfoData = $accountInfo->getData(true);
+            if ($accountInfoData["code"] !== 200) return $accountInfo;
+            $accountInfoData = $accountInfoData["data"];
+
+            $account = Account::query()->firstWhere(["account_type" => "enterprise_cookie", "uk" => $accountInfoData["uk"]]);
+            if ($account) {
+                $have_repeat = true;
+                continue;
+            }
+
+            Account::query()->create($accountInfoData);
+        }
+
+        return ResponseController::success([
+            "have_repeat" => $have_repeat
+        ]);
+    }
+
+    private function insert_open_platform(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "account_data" => "required|array",
+            "account_data.*" => "required|array",
+            "account_data.*.refresh_token" => "required|string",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $have_repeat = false;
+        foreach ($request["account_data"] as $accountDatum) {
+            $accountInfo = self::getOpenPlatformInfo($accountDatum["refresh_token"]);
+            $accountInfoData = $accountInfo->getData(true);
+            if ($accountInfoData["code"] !== 200) return $accountInfo;
+            $accountInfoData = $accountInfoData["data"];
+
+            $account = Account::query()->firstWhere(["account_type" => "open_platform", "uk" => $accountInfoData["uk"]]);
+            if ($account) {
+                $have_repeat = true;
+                continue;
+            }
+
+            Account::query()->create($accountInfoData);
+        }
+
+        return ResponseController::success([
+            "have_repeat" => $have_repeat
+        ]);
+    }
+
+    private function insert_download_ticket(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "account_data" => "required|array",
+            "account_data.*" => "required|array",
+            "account_data.*.surl" => "required|string",
+            "account_data.*.pwd" => "required|string",
+            "account_data.*.dir" => "required|string",
+            "account_data.*.save_cookie" => "required|string",
+            "account_data.*.download_cookie" => "required|string",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $have_repeat = false;
+        foreach ($request["account_data"] as $accountDatum) {
+            $accountInfo = self::getDownLoadTicketInfo($accountDatum["surl"], $accountDatum["pwd"], $accountDatum["dir"], $accountDatum["save_cookie"], $accountDatum["download_cookie"]);
+            $accountInfoData = $accountInfo->getData(true);
+            if ($accountInfoData["code"] !== 200) return $accountInfo;
+            $accountInfoData = $accountInfoData["data"];
+
+            $account = Account::query()->firstWhere(["account_type" => "download_ticket", "uk" => $accountInfoData["uk"]]);
+            if ($account) {
+                $have_repeat = true;
+                continue;
+            }
+
+            Account::query()->create($accountInfoData);
+        }
+
+        return ResponseController::success([
+            "have_repeat" => $have_repeat
         ]);
     }
 
@@ -277,19 +335,18 @@ class AccountController extends Controller
             ->get();
 
         foreach ($accounts as $account) {
-            $account_type = $account["account_type"];
             $account_data = $account["account_data"];
-            if ($account_type === "cookie" || $account_type === "access_token") {
-                $data = self::getCookieOrAccessTokenInfo($account_type, $account_data[$account_type]);
-            } else if ($account_type === "enterprise_cookie") {
-                $data = self::getEnterpriseInfo($account_data["cookie"]);
-            } else {
-                // download_ticket
-                $data = self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"]);
-            }
+
+            $data = match ($request["account_type"]) {
+                "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
+                "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"]),
+                "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
+                "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"])
+            };
             $data = $data->getData(true);
             if ($data["code"] !== 200) return $data;
             $data = $data["data"];
+
             $account->update($data);
         }
 

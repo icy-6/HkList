@@ -20,7 +20,7 @@ class InstallController extends Controller
             "db_port" => "required|numeric",
             "db_database" => "required|string",
             "db_username" => "required|string",
-            "db_password" => "string",
+            "db_password" => "nullable|string",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -109,7 +109,7 @@ class InstallController extends Controller
                 "count" => 10,
                 "size" => 10 * UtilsController::$GB,
                 "day" => 0,
-                "can_use_ip_count" => 0,
+                "can_use_ip_count" => 114514,
                 "ip" => [],
                 "switch" => true,
                 "reason" => "",

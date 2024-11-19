@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FileList;
 use App\Models\Record;
 use App\Models\Token;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -40,13 +41,12 @@ class ParserController extends Controller
 
         // 判断游客
         if ($request["token"] === "guest") {
-            // 绑定指纹
-            // 每日刷新
+            // 绑定指纹,每日刷新
             $records = Record::query()
-                ->where([
-                    "token_id" => $token["id"],
-                    "fingerprint" => $request["fingerprint"]
-                ])
+                ->where("token_id", $token["id"])
+                ->where(function (Builder $query) use ($request) {
+                    $query->where("fingerprint", $request["fingerprint"])->orWhere("ip", $request->ip());
+                })
                 ->whereDate("records.created_at", "=", now())
                 ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
                 ->selectRaw("SUM(size) as size,COUNT(*) as count")
@@ -81,7 +81,12 @@ class ParserController extends Controller
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
             ->first();
 
-        if ($records["count"] >= $token["count"] || $records["size"] >= $token["size"] * 1073741824) return ResponseController::TokenQuotaHasBeenUsedUp();
+        if (
+            $records["count"] >= $token["count"] ||
+            $records["size"] >= $token["size"]
+        ) {
+            return ResponseController::TokenQuotaHasBeenUsedUp();
+        }
 
         return ResponseController::success([
             "count" => $token["count"] - $records["count"],
@@ -94,11 +99,11 @@ class ParserController extends Controller
     {
         $validator = Validator::make($request->all(), [
             "surl" => "required|string",
-            "pwd" => "string",
+            "pwd" => "nullable|string",
             "dir" => "required|string",
-            "page" => "numeric",
-            "num" => "numeric",
-            "order" => Rule::in(["time", "filename"])
+            "page" => "nullable|numeric",
+            "num" => "nullable|numeric",
+            "order" => ["nullable", Rule::in(["time", "filename"])]
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
