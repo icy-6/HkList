@@ -1,11 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\ResponseController;
+use App\Http\Controllers\UtilsController;
 
 class BDWPApiController extends Controller
 {

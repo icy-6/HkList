@@ -7,5 +7,8 @@ use Illuminate\Http\Request;
 
 class V1Controller extends Controller
 {
-    //
+    public function request(Request $request)
+    {
+
+    }
 }

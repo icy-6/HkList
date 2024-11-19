@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\BDWPApiController;
 use App\Models\FileList;
 use App\Models\Record;
 use App\Models\Token;
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-class ParserController extends Controller
+class ParseController extends Controller
 {
     public function getConfig(Request $request)
     {
@@ -148,6 +149,8 @@ class ParserController extends Controller
 
     public function getDownloadLinks(Request $request)
     {
+        $parseConfig = config("hklist.parse");
+        if ($parseConfig["parser_server"] === "" || $parseConfig["parser_password"] === "") return ResponseController::parserServerNotDefined();
 
     }
 }

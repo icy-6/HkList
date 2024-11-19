@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Http\Controllers\Api\ParserApiController;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\ParserApiController;
 use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\UtilsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class ParseController extends Controller
+class ParseConfigController extends Controller
 {
     public function getConfig()
     {

@@ -8,7 +8,7 @@ use App\Http\Controllers\UtilsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class MailController extends Controller
+class MailConfigController extends Controller
 {
     public function getConfig()
     {
@@ -60,6 +60,6 @@ class MailController extends Controller
     public function sendTestMail()
     {
         if (!config("mail.switch")) return ResponseController::mailServiceIsNotEnable();
-        return UtilsController::sendMail("MailController::sendTestMail", "测试邮件", "测试邮件的副标题");
+        return UtilsController::sendMail("MailConfigController::sendTestMail", "测试邮件", "测试邮件的副标题");
     }
 }

@@ -8,7 +8,7 @@ use App\Http\Controllers\UtilsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class LimitController extends Controller
+class LimitConfigController extends Controller
 {
     public function getConfig()
     {

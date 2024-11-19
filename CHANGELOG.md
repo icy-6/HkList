@@ -6,6 +6,8 @@
 - [*] 优化 `ParserController` 中 `游客` 额度逻辑
 - [*] 修复 `ParserController` 中 `卡密` 额度逻辑错误
 - [*] 修复 `TokenController` 中 `卡密` 字段缺失问题
+- [-] 移除 无用导入
+- [*] 优化 文件夹分工
 
 ## 11-18 v2.0-dev
 

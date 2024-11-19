@@ -8,7 +8,7 @@ use App\Http\Controllers\UtilsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class GeneralController extends Controller
+class GeneralConfigController extends Controller
 {
     public function getConfig()
     {
