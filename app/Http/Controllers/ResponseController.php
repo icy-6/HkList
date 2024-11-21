@@ -48,42 +48,42 @@ class ResponseController extends Controller
         return self::response(20005, 500, "参数错误", config("app.debug") ? ["errors" => $errors] : null);
     }
 
-    public static function getAccountInfoFailed($errmsg)
+    public static function getAccountInfoFailed($errmsg = "未知")
     {
         return self::response(20006, 500, "获取账户信息失败,errmsg: $errmsg");
     }
 
-    public static function getAccessTokenFailed($errmsg)
+    public static function getAccessTokenFailed($errmsg = "未知")
     {
         return self::response(20007, 500, "换取AccessToken失败,errmsg: $errmsg");
     }
 
-    public static function getSvipAtFailed($errmsg)
+    public static function getSvipAtFailed($errmsg = "未知")
     {
         return self::response(20008, 500, "获取svip到期时间失败,errmsg: $errmsg");
     }
 
-    public static function getEnterpriseInfoFailed($errmsg)
+    public static function getEnterpriseInfoFailed($errmsg = "未知")
     {
         return self::response(20009, 500, "获取企业账号信息失败,errmsg: $errmsg");
     }
 
-    public static function getAccountAPLFailed($errmsg)
+    public static function getAccountAPLFailed($errmsg = "未知")
     {
         return self::response(20010, 500, "获取账号封禁状态失败,errmsg: $errmsg");
     }
 
-    public static function getFileListFailed($errno, $errtype)
+    public static function getFileListFailed($errno = "未知", $errtype = "未知")
     {
         return self::response(20011, 500, "获取分享链接信息失败,errno: $errno, errtype: $errtype");
     }
 
-    public static function getFileListMsgFailed($errmsg)
+    public static function getFileListMsgFailed($errmsg = "未知")
     {
         return self::response(20012, 500, "获取分享链接信息失败,errmsg: $errmsg");
     }
 
-    public static function getVcodeFailed($errno)
+    public static function getVcodeFailed($errno = "未知")
     {
         return self::response(20013, 500, "获取验证码图片信息失败,errno: $errno");
     }
@@ -151,5 +151,65 @@ class ResponseController extends Controller
     public static function blackListExists()
     {
         return self::response(20025, 400, "该特征已存在");
+    }
+
+    public static function filesOverLoaded()
+    {
+        return self::response(20026, 400, "单次请求的文件过多");
+    }
+
+    public static function tokenQuotaCountIsNotEnough()
+    {
+        return self::response(20027, 400, "卡密剩余下载文件数不足");
+    }
+
+    public static function tokenQuotaSizeIsNotEnough()
+    {
+        return self::response(20028, 400, "卡密剩余下载文件大小不足");
+    }
+
+    public static function unknownFsId()
+    {
+        return self::response(20029, 400, "未记录的fs_id");
+    }
+
+    public static function fileIsTooSmall()
+    {
+        return self::response(20030, 400, "选择解析的文件过小");
+    }
+
+    public static function fileIsTooBig()
+    {
+        return self::response(20031, 400, "选择解析的文件过大");
+    }
+
+    public static function unknownParseMode()
+    {
+        return self::response(20031, 500, "未知解析模式");
+    }
+
+    public static function unsupportedCountry()
+    {
+        return self::response(20032, 400, "不支持的国家");
+    }
+
+    public static function accountIsNotEnough()
+    {
+        return self::response(20033, 500, "账号不足");
+    }
+
+    public static function unknownAccountType()
+    {
+        return self::response(20034, 500, "未知账号类型");
+    }
+
+    public static function saveToDiskFailed($errno = "未知", $errmsg = "未知")
+    {
+        return self::response(20035, 500, "保存到网盘失败,errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function downloadByDiskFailed($errno = "未知", $errmsg = "未知")
+    {
+        return self::response(20036, 500, "下载盘内文件失败,errno: $errno, errmsg: $errmsg");
     }
 }

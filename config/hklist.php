@@ -16,6 +16,7 @@ return [
         "max_once" => (float)env("HKLIST_MAX_ONCE", 5),
         "min_single_filesize" => (float)env("HKLIST_MIN_SINGLE_FILESIZE", 0),
         "max_single_filesize" => (float)env("HKLIST_MAX_SINGLE_FILESIZE", 53687091200),
+        "max_download_daily_pre_account" => (float)env("HKLIST_MAX_DOWNLOAD_DAILY_PRE_ACCOUNT", 0),
         "limit_cn" => (bool)env("HKLIST_LIMIT_CN", true),
         "limit_prov" => (bool)env("HKLIST_LIMIT_PROV", false),
     ],

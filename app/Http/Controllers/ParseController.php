@@ -3,17 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\BDWPApiController;
+use App\Http\Controllers\Parsers\V1Controller;
+use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Record;
 use App\Models\Token;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class ParseController extends Controller
 {
-    public function getConfig(Request $request)
+    public static function getConfig(Request $request)
     {
         $config = config("hklist");
         return ResponseController::success([
@@ -25,16 +29,15 @@ class ParseController extends Controller
             "max_once" => $config["limit"]["max_once"],
             "min_single_filesize" => $config["limit"]["min_single_filesize"],
             "max_single_filesize" => $config["limit"]["max_single_filesize"],
-            "have_account" => true
+            "have_account" => self::getRandomCookie($request)->getDate(true)["code"] === 200
         ]);
     }
 
     public function getLimit(Request $request)
     {
-        $validator = Validator::make($request->query(), [
+        $validator = Validator::make($request->all(), [
             "token" => "required|string",
         ]);
-
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $token = Token::query()->firstWhere("token", $request["token"]);
@@ -147,10 +150,209 @@ class ParseController extends Controller
         return BDWPApiController::getVcode();
     }
 
+    public static function getAccountType()
+    {
+        $parse_mode = config("hklist.parse.parse_mode");
+        return match ($parse_mode) {
+            // 正常模式
+            1, 2, 3, 4, 6, 7, 8, 9 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
+            // 开放平台
+            5, 10 => ResponseController::success(["account_type" => "open_platform", "account_data" => ["vip_type" => "超级会员"]]),
+            // 企业平台
+            11 => ResponseController::success(["account_type" => "enterprise_cookie", "account_data" => []]),
+            // 漏洞接口
+            12 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
+            // 下载卷接口
+            13 => ResponseController::success(["account_type" => "download_ticket", "account_data" => []]),
+            default => ResponseController::unknownParseMode()
+        };
+    }
+
+    public static function getRandomCookie(Request $request, $makeNew = false)
+    {
+        $province = null;
+        $limit_cn = config("hklist.limit.limit_cn");
+        $limit_prov = config("hklist.limit.limit_prov");
+        if ($limit_cn || $limit_prov) {
+            $ip = $request->ip();
+            $prov = UtilsController::getProvinces($ip);
+            $provData = $prov->getData(true);
+            if ($provData["code"] !== 200) return $prov;
+            $provData = $provData["data"];
+
+            if (config("hklist.limit.limit_cn") && !$provData["isCn"]) return ResponseController::unsupportedCountry();
+            $province = $provData["province"];
+        }
+
+        $accountType = self::getAccountType();
+        $accountTypeData = $accountType->getData(true);
+        if ($accountTypeData["code"] !== 200) return $accountType;
+        $accountTypeData = $accountTypeData["data"];
+
+        // 解析模式需要超级会员
+        $needPro = false;
+        $account = Account::query()->where(["switch" => true, "account_type" => $accountTypeData["account_type"]]);
+        if (!$makeNew && $province !== null) $account = $account->where("prov", $province);
+        foreach ($accountTypeData["account_data"] as $key => $value) {
+            if ($key === "vip_type" && $value === "超级会员") $needPro = true;
+            $account = $account->where("account_data->" . $key, $value);
+        }
+
+        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
+        if ($max_download_daily_pre_account > 0) {
+            $account = $account
+                ->leftJoin("records", function ($join) {
+                    $join->on("records.account_id", "=", "records.account_id")
+                        ->whereDate("records.created_at", "=", now());
+                })
+                ->rightJoin("file_lists", function ($join) {
+                    $join->on("file_lists.fs_id", "=", "records.fs_id");
+                })
+                ->select("accounts.*", DB::raw('IFNULL(SUM(file_lists.size), 0) as total_size'))
+                ->having('total_size', '<', $max_download_daily_pre_account);
+        }
+
+        $account = $account->inRandomOrder()->first();
+
+        if (!$account) {
+            // 判断存不存在 prov
+            // 如果有那么就判断有没有还没有分配 prov 的账号
+            if ($province !== null && !$makeNew) {
+                return self::getRandomCookie($request, true);
+            } else {
+                return ResponseController::accountIsNotEnough();
+            }
+        }
+
+        // 判断账号是否需要续期
+//        $isExpired = self::refreshExpiredAccount($account, $needPro);
+//        $isExpiredData = $isExpired->getData(true);
+//        // 过期了获取一个新账号
+//        if ($isExpiredData["data"]["isExpired"]) return self::getRandomCookie($request);
+
+        if ($makeNew) {
+            $account->update([
+                "prov" => $province
+            ]);
+        }
+
+        return ResponseController::success($account);
+    }
+
+    private static function refreshExpiredAccount(Account $account, $needPro)
+    {
+        // download_ticket 不校验是否过期
+
+        $account_type = $account["account_type"];
+        $account_data = $account["account_data"];
+
+        if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
+            // 忽略普通用户
+            if ($account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
+            $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
+            if (!$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
+        } else if ($account_type === "open_platform") {
+            $token_expires_at = Carbon::parse($account_data["token_expires_at"], config("app.timezone"));
+            $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
+            if (!$token_expires_at->isPast() && !$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
+        }
+
+        $updateInfo = AccountController::updateInfo(["id" => [$account["id"]]], false);
+        $updateInfoData = $updateInfo->getData(true);
+        // 判断解析模式 需要是超级会员的模式
+        if ($needPro) {
+            // 判断账号现在的类型
+            $newAccount = Account::query()->find($account["id"]);
+            if ($newAccount["account_data"] !== "超级会员") {
+                $account->update(["switch" => false, "reason" => "会员过期"]);
+                return ResponseController::success(["isExpired" => true]);
+            }
+        }
+        if ($updateInfoData["code"] === 200) return ResponseController::success(["isExpired" => false]);
+
+        $account->update(["switch" => false, "reason" => "账号过期"]);
+        return ResponseController::success(["isExpired" => true]);
+    }
+
     public function getDownloadLinks(Request $request)
     {
-        $parseConfig = config("hklist.parse");
-        if ($parseConfig["parser_server"] === "" || $parseConfig["parser_password"] === "") return ResponseController::parserServerNotDefined();
+        set_time_limit(0);
 
+        $validator = Validator::make($request->all(), [
+            "randsk" => "required|string",
+            "uk" => "required|numeric",
+            "shareid" => "required|numeric",
+            "fs_id" => "required|array",
+            "fs_id.*" => "required|numeric",
+            "surl" => "required|string",
+            "dir" => "required|string",
+            "pwd" => "nullable|string",
+            "token" => "required|string"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        // 每次请求不能超过10个文件,请分割处理
+        $max_once = config("hklist.limit.max_once");
+        $limit = $max_once >= 10 ? 10 : $max_once;
+        if (count($request["fs_id"]) > $limit) return ResponseController::filesOverLoaded();
+
+        // 检查限制还能不能解析
+        $checkLimitRes = self::getLimit($request);
+        $checkLimitData = $checkLimitRes->getData(true);
+        if ($checkLimitData["code"] !== 200) return $checkLimitRes;
+        $checkLimitData = $checkLimitData["data"];
+
+        // 检查文件数量是否小于剩余配额
+        if (count($request["fs_id"]) > $checkLimitData["count"]) return ResponseController::tokenQuotaCountIsNotEnough();
+
+        // 检查链接是否有效
+        $valid = self::getFileList($request);
+        $validData = $valid->getData(true);
+        if ($validData["code"] !== 200) return $valid;
+
+        // 获取文件列表
+        $fileList = FileList::query()
+            ->where(["surl" => $request["surl"], "pwd" => $request["pwd"]])
+            ->whereIn("fs_id", $request["fs_id"])
+            ->get();
+
+        if ($fileList->count() !== count($request["fs_id"])) return ResponseController::unknownFsId();
+
+        $min_filesize = config("hklist.limit.min_single_filesize");
+        $max_filesize = config("hklist.limit.max_single_filesize");
+        foreach ($fileList as $file) {
+            if ($file["size"] < $min_filesize) return ResponseController::fileIsTooSmall();
+            if ($file["size"] > $max_filesize) return ResponseController::fileIsTooBig();
+        }
+
+        // 检查文件总大小是否大于剩余配额
+        if ($fileList->sum("size") > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
+
+        $json = [
+            "randsk" => $request["randsk"],
+            "uk" => $request["uk"],
+            "shareid" => $request["shareid"],
+            "fs_id" => $request["fs_id"],
+            "surl" => $request["surl"],
+            "dir" => $request["dir"],
+            "pwd" => $request["pwd"],
+            "token" => $request["token"]
+        ];
+
+        if (isset($request["vcode_input"])) {
+            $validator = Validator::make($request->all(), [
+                "vcode_input" => "required|string",
+                "vcode_str" => "required|string"
+            ]);
+            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+            $json["vcode_input"] = $request["vcode_input"];
+            $json["vcode_str"] = $request["vcode_str"];
+        }
+
+        // 代理服务器未完成
+        return match (config("hklist.parse.parse_mode")) {
+            1 => V1Controller::request($request, $json)
+        };
     }
 }

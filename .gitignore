@@ -20,3 +20,10 @@ yarn-error.log
 /.idea
 /.vscode
 /.zed
+
+app/Http/Controllers/Parsers
+!/app/Http/Controllers/Parsers/V1Controller.php
+
+app/Http/Controllers/Api
+!app/Http/Controllers/Api/BDWPApiController.php
+!app/Http/Controllers/Api/ParserApiController.php

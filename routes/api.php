@@ -32,6 +32,7 @@ Route::prefix("/v1")->group(function () {
                 Route::get("/", [AccountController::class, "select"]);
                 Route::post("/", [AccountController::class, "insert"]);
                 Route::post("/update_info", [AccountController::class, "updateInfo"]);
+                Route::post("/check_ban_status", [AccountController::class, "checkBanStatus"]);
                 Route::patch("/", [AccountController::class, "update"]);
                 Route::delete("/", [AccountController::class, "delete"]);
             });

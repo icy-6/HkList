@@ -115,6 +115,13 @@ class UtilsController extends Controller
         $country = $arr[0];
         $prov = $arr[2];
 
+        if (str_contains($result, "内网")) {
+            return ResponseController::success([
+                "province" => "上海市",
+                "isCn" => true
+            ]);
+        }
+
         foreach (self::provinces as $key => $standardName) {
             if (str_contains($prov, $key)) {
                 return ResponseController::success([
@@ -180,4 +187,13 @@ class UtilsController extends Controller
     }
 
     public static int $GB = 1073741824;
+
+    public static function getBDUSS($cookie)
+    {
+        preg_match('/BDUSS=([^;]*)/i', $cookie, $matches);
+        $BDUSS = $matches[0] ?? "";
+        preg_match('/STOKEN=([^;]*)/i', $cookie, $matches);
+        $STOKEN = $matches[0] ?? "";
+        return $BDUSS . "; " . $STOKEN . ";";
+    }
 }

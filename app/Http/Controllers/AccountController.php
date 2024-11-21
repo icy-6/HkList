@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
-    private function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
+    private static function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
     {
         // 获取账户信息
         $accountInfo = BDWPApiController::getAccountInfo($accountType, $cookieOrAccessToken);
@@ -41,7 +41,7 @@ class AccountController extends Controller
         ]);
     }
 
-    private function getEnterpriseInfo($cookie)
+    private static function getEnterpriseInfo($cookie)
     {
         // 获取账户信息
         $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
@@ -74,7 +74,7 @@ class AccountController extends Controller
         ]);
     }
 
-    private function getOpenPlatformInfo($refresh_token)
+    private static function getOpenPlatformInfo($refresh_token)
     {
         // 刷新token
         $accessToken = BDWPApiController::getAccessToken($refresh_token);
@@ -105,7 +105,7 @@ class AccountController extends Controller
         ]);
     }
 
-    private function getDownLoadTicketInfo($surl, $pwd, $dir, $save_cookie, $download_cookie)
+    private static function getDownLoadTicketInfo($surl, $pwd, $dir, $save_cookie, $download_cookie)
     {
         // 只需检查cookie是否有效
         $saveAccountInfo = BDWPApiController::getAccountInfo("cookie", $save_cookie);
@@ -321,13 +321,15 @@ class AccountController extends Controller
         }
     }
 
-    public function updateInfo(Request $request)
+    public static function updateInfo(Request|array $request, $needFilter = true)
     {
-        $validator = Validator::make($request->post(), [
-            "id" => "required|array",
-            "id.*" => "required|numeric",
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        if ($needFilter) {
+            $validator = Validator::make($request->post(), [
+                "id" => "required|array",
+                "id.*" => "required|numeric",
+            ]);
+            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        }
 
         $accounts = Account::query()
             ->whereIn("id", $request["id"])
@@ -335,8 +337,7 @@ class AccountController extends Controller
 
         foreach ($accounts as $account) {
             $account_data = $account["account_data"];
-
-            $data = match ($request["account_type"]) {
+            $data = match ($account["account_type"]) {
                 "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
                 "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"]),
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
@@ -350,6 +351,57 @@ class AccountController extends Controller
         }
 
         return ResponseController::success();
+    }
+
+    public function checkBanStatus(Request $request)
+    {
+        $validator = Validator::make($request->post(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $accounts = Account::query()
+            ->whereIn("id", $request["id"])
+            ->get();
+
+        $res = [];
+        foreach ($accounts as $account) {
+            $account_data = $account["account_data"];
+            $account_type = $account["account_type"];
+
+            if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
+                $data = [
+                    BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
+                ];
+            } else if ($account_type === "open_platform") {
+                $data = [
+                    BDWPApiController::getAccountAPL("open_platform", $account_data["open_platform"])
+                ];
+            } else if ($account_type === "download_ticket") {
+                $data = [
+                    BDWPApiController::getAccountAPL("cookie", $account_data["save_cookie"]),
+                    BDWPApiController::getAccountAPL("cookie", $account_data["download_cookie"])
+                ];
+            } else {
+                return ResponseController::unknownAccountType();
+            }
+
+            $_res = [
+                "id" => $account["id"],
+                "account_type" => $account_type,
+                "status" => []
+            ];
+
+            foreach ($data as $item) {
+                $item = $item->getData(true);
+                $_res["status"][] = $item["data"];
+            }
+
+            $res[] = $_res;
+        }
+
+        return ResponseController::success($res);
     }
 
     public function delete(Request $request)

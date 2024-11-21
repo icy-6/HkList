@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\UtilsController;
+use Illuminate\Database\Eloquent\Casts\Json;
 
 class BDWPApiController extends Controller
 {
@@ -179,7 +180,7 @@ class BDWPApiController extends Controller
     public static function getEnterpriseInfo($cookie)
     {
         $res = UtilsController::sendRequest(
-            "BDWPApiController::getAccessToken",
+            "BDWPApiController::getEnterpriseInfo",
             "get",
             "https://pan.baidu.com/mid_enterprise_v2/api/enterprise/organization/allorganizationinfo",
             [
@@ -250,7 +251,7 @@ class BDWPApiController extends Controller
         }
 
         $res = UtilsController::sendRequest(
-            "BDWPApiController::getAccessToken",
+            "BDWPApiController::getAccountAPL",
             "get",
             "https://pan.baidu.com/api/checkapl/download",
             $req
@@ -403,7 +404,7 @@ class BDWPApiController extends Controller
     public static function getVcode()
     {
         $res = UtilsController::sendRequest(
-            "BDWPApiController::getFileList",
+            "BDWPApiController::getVcode",
             "post",
             "https://pan.baidu.com/api/getvcode",
             [
@@ -431,6 +432,102 @@ class BDWPApiController extends Controller
         return ResponseController::success([
             "vcode_str" => $response["vcode"],
             "vcode_img" => $response["img"],
+        ]);
+    }
+
+    /**
+     * errno: 9013/12 风控
+     * errno: 2 参数过期
+     * {
+     *     "from": "aa",
+     *     "from_fs_id": 123,
+     *     "to": "abc",
+     *     "to_fs_id": 123
+     * }[]
+     */
+    public static function saveToDiskWeb($cookie, $shareid, $fs_id, $uk, $sekey, $url)
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::saveToDiskWeb",
+            "post",
+            "https://pan.baidu.com/share/transfer",
+            [
+                "headers" => [
+                    "User-Agent" => config("hklist.fake_user_agent"),
+                    "Cookie" => $cookie,
+                    "Referer" => $url
+                ],
+                "query" => [
+                    "shareid" => $shareid,
+                    "from" => $uk,
+                    "sekey" => $sekey,
+                    "ondup" => "newcopy",
+                    "async" => 0,
+                    "channel" => "chunlei",
+                    "web" => 1,
+                    "app_id" => 250528,
+                    "clienttype" => 0
+                ],
+                "form_params" => [
+                    "fsidlist" => JSON::encode($fs_id),
+                    "path" => "/我的资源"
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["errno"]) ||
+            !isset($response["show_msg"]) ||
+            $response["errno"] !== 0 ||
+            $response["show_msg"] !== ""
+        ) {
+            return ResponseController::saveToDiskFailed($response["errno"], $response["show_msg"] ?? "未知");
+        }
+
+        return ResponseController::success($response["extra"]["list"]);
+    }
+
+    /**
+     * errno: 31045 31326 风控
+     * string[]
+     */
+    public static function downloadByDisk($cookie, $path, $ua)
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::downloadByDisk",
+            "post",
+            "https://pcs.baidu.com/rest/2.0/pcs/file",
+            [
+                "headers" => [
+                    "User-Agent" => $ua,
+                    "Cookie" => $cookie
+                ],
+                "query" => [
+                    "method" => "locatedownload",
+                    "app_id" => 250528,
+                    "path" => $path,
+                    "ver" => 2,
+                    "time" => 1732106564,
+                    "rand" => "9b696564418ae5ab758d60cbc96c199c4679f772",
+                    "rand2" => "d76e889b6aafd3087ac3bd56f4d4053a",
+                    "devuid" => "BDIMXV2-O_0B5DF5389B5D4775946635E4E18D8314-C_0-D_5CDF_B803_70B0_42BC.-M_BCECA007D4F6-V_0D274B62",
+                    "version" => "7.44.6.1",
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (!isset($response["urls"])) return ResponseController::downloadByDiskFailed($response["error_code"], $response["error_msg"]);
+
+        return ResponseController::success([
+            "urls" => array_reverse(array_map(fn($v) => $v["url"], $response["urls"]))
         ]);
     }
 }
