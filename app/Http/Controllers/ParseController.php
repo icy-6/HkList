@@ -225,10 +225,10 @@ class ParseController extends Controller
         }
 
         // 判断账号是否需要续期
-//        $isExpired = self::refreshExpiredAccount($account, $needPro);
-//        $isExpiredData = $isExpired->getData(true);
-//        // 过期了获取一个新账号
-//        if ($isExpiredData["data"]["isExpired"]) return self::getRandomCookie($request);
+        $isExpired = self::refreshExpiredAccount($account, $needPro);
+        $isExpiredData = $isExpired->getData(true);
+        // 过期了获取一个新账号
+        if ($isExpiredData["data"]["isExpired"]) return self::getRandomCookie($request);
 
         if ($makeNew) {
             $account->update([
@@ -336,7 +336,8 @@ class ParseController extends Controller
             "surl" => $request["surl"],
             "dir" => $request["dir"],
             "pwd" => $request["pwd"],
-            "token" => $request["token"]
+            "token" => $request["token"],
+            "fingerprint" => $request["fingerprint"] ?? ""
         ];
 
         if (isset($request["vcode_input"])) {
@@ -351,8 +352,50 @@ class ParseController extends Controller
         }
 
         // 代理服务器未完成
-        return match (config("hklist.parse.parse_mode")) {
+        $response = match (config("hklist.parse.parse_mode")) {
             1 => V1Controller::request($request, $json)
         };
+        $responseData = $response->getData(true);
+        if ($responseData["code"] !== 200) return $response;
+        $responseData = $responseData["data"];
+
+        $responseData = collect($responseData)->map(function ($item) use ($request, $json) {
+            $isLimit = false;
+            if ($item["message"] !== "请求成功") return $item;
+
+            foreach ($item["urls"] as $url) {
+                if (!str_contains($url, "tsl=0") && !$isLimit) $isLimit = true;
+            }
+
+            Account::query()
+                ->find($item["account_id"])
+                ->update([
+                    "last_use_at" => now(),
+                    "switch" => !$isLimit,
+                    "reason" => $isLimit ? "账号已限速" : ""
+                ]);
+
+            if ($isLimit) {
+                $item["message"] = "账号已限速";
+                unset($item["urls"]);
+            } else {
+                // 插入记录
+                Record::query()->create([
+                    "ip" => $request->ip(),
+                    "fingerprint" => $json["fingerprint"],
+                    "fs_id" => $item["fs_id"],
+                    "url" => $item["urls"][0],
+                    "ua" => $item["ua"],
+                    "token_id" => Token::query()->firstWhere("token", $json["token"])["id"],
+                    "account_id" => $item["account_id"],
+                ]);
+            }
+
+            unset($item["account_id"]);
+
+            return $item;
+        });
+
+        return ResponseController::success($responseData);
     }
 }

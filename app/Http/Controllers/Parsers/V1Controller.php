@@ -49,39 +49,24 @@ class V1Controller extends Controller
                 "message" => $message,
                 "filename" => $filename,
                 "fs_id" => $fs_id,
-                "ua" => $ua
+                "ua" => $ua,
+                "account_id" => $account["id"]
             ];
 
             if ($dlinkData["code"] !== 200) {
-                Account::query()->find($account["id"])->update([
-                    "switch" => false,
-                    "reason" => $dlinkData["message"],
-                    "last_use_at" => now()
-                ]);
+                Account::query()
+                    ->find($account["id"])
+                    ->update([
+                        "switch" => false,
+                        "reason" => $dlinkData["message"],
+                        "last_use_at" => now()
+                    ]);
                 $urls[] = $url;
                 UtilsController::sendMail("V1Controller::downloadByDisk", "解析失败,账号ID:" . Json::encode([$account["id"]]), "解析失败");
                 return ResponseController::success($urls);
             }
 
-            $isLimit = false;
-            foreach ($dlinkData["data"]["urls"] as $dlinks) {
-                if ($dlinks["message"] !== "请求成功") continue;
-                foreach ($dlinks["urls"] as $dlink) {
-                    if (!str_contains($dlink, "tsl=0") && !$isLimit) $isLimit = true;
-                }
-            }
-
-            Account::query()
-                ->find($account["id"])
-                ->update([
-                    "last_use_at" => now(),
-                    "switch" => !$isLimit,
-                    "reason" => $isLimit ? "账号已限速" : ""
-                ]);
-
-            if (!$isLimit) $url["urls"] = $dlinkData["data"]["urls"];
-            else $url["message"] = "账号已限速";
-
+            $url["urls"] = $dlinkData["data"]["urls"];
             $urls[] = $url;
         }
 
