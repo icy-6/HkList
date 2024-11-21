@@ -18,7 +18,7 @@ class ParseConfigController extends Controller
 
     public function updateConfig(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "parser_server" => "nullable|string",
             "parser_password" => "nullable|string",
             "proxy_server" => "nullable|boolean",

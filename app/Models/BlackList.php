@@ -11,7 +11,9 @@ class BlackList extends Model
         "type",
         "identifier",
         "reason",
-        "expires_at"
+        "expires_at",
+        "created_at",
+        "updated_at",
     ];
 
     protected $fillable = [

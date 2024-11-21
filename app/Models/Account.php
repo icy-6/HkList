@@ -15,7 +15,9 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
-        "used_at"
+        "used_at",
+        "created_at",
+        "updated_at",
     ];
 
     protected $fillable = [

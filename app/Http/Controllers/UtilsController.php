@@ -20,12 +20,15 @@ class UtilsController extends Controller
     {
         if (!config("mail.switch")) return ResponseController::success();
         try {
-            Mail::send("mails.error", [
-                "name" => config("mail.from.name"),
-                "message" => $message
-            ], function (Message $message) use ($subject) {
-                $message->to(config("mail.to.address"))->subject($subject);
-            });
+            Mail::send(
+                "mails.error",
+                [
+                    "name" => config("mail.from.name"),
+                    "msg" => $message
+                ],
+                function (Message $message) use ($subject) {
+                    $message->to(config("mail.to.address"))->subject($subject);
+                });
             return ResponseController::success();
         } catch (Exception $e) {
             return ResponseController::unknownError($actionName, $e);

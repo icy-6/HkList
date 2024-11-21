@@ -28,7 +28,7 @@ class MailConfigController extends Controller
 
     public function updateConfig(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "mail_switch" => "required|boolean",
             "mail_host" => "required|string",
             "mail_port" => "required|numeric",

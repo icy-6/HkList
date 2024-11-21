@@ -12,13 +12,13 @@ class TokenController extends Controller
 {
     public function insert(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "type" => ["required", Rule::in(['set', 'generate'])],
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         if ($request["type"] === "set") {
-            $validator = Validator::make($request->post(), [
+            $validator = Validator::make($request->all(), [
                 "token" => "required|string",
                 "count" => "required|numeric",
                 "size" => "required|numeric",
@@ -39,7 +39,7 @@ class TokenController extends Controller
                 "expires_at" => null
             ]);
         } else {
-            $validator = Validator::make($request->post(), [
+            $validator = Validator::make($request->all(), [
                 "generate_count" => "required|numeric",
                 "count" => "required|numeric",
                 "size" => "required|numeric",
@@ -73,7 +73,7 @@ class TokenController extends Controller
 
     public function select(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "column" => ["nullable", "string", Rule::in(Token::$attrs)],
             "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
         ]);
@@ -88,7 +88,7 @@ class TokenController extends Controller
 
     public function update(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
             "count" => "required|numeric",
@@ -125,7 +125,7 @@ class TokenController extends Controller
 
     public function delete(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);

@@ -16,7 +16,9 @@ class Token extends Model
         "ip",
         "switch",
         "reason",
-        "expires_at"
+        "expires_at",
+        "created_at",
+        "updated_at",
     ];
 
     protected $fillable = [

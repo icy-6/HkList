@@ -14,7 +14,9 @@ class Record extends Model
         "url",
         "ua",
         "token_id",
-        "account_id"
+        "account_id",
+        "created_at",
+        "updated_at",
     ];
 
     protected $fillable = [

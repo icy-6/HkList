@@ -9,7 +9,7 @@ class CheckPasswordController extends Controller
 {
     public function checkPassword(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "admin_password" => "nullable|string",
         ]);
 

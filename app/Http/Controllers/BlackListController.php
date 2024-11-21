@@ -11,7 +11,7 @@ class BlackListController extends Controller
 {
     public function insert(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
             "reason" => "required|string",
@@ -38,7 +38,7 @@ class BlackListController extends Controller
 
     public function select(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "column" => ["nullable", "string", Rule::in(BlackList::$attrs)],
             "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
         ]);
@@ -53,7 +53,7 @@ class BlackListController extends Controller
 
     public function update(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
             "type" => ["required", Rule::in("ip", "fingerprint")],
@@ -81,7 +81,7 @@ class BlackListController extends Controller
 
     public function delete(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);

@@ -12,7 +12,9 @@ class FileList extends Model
         "pwd",
         "fs_id",
         "size",
-        "filename"
+        "filename",
+        "created_at",
+        "updated_at",
     ];
 
     protected $fillable = [

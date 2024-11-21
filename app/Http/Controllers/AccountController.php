@@ -142,7 +142,7 @@ class AccountController extends Controller
 
     public function insert(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")]
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -157,7 +157,7 @@ class AccountController extends Controller
 
     private function insert_cookie(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "account_data" => "required|array",
             "account_data.*" => "required|array",
             "account_data.*.cookie" => "required|string",
@@ -187,7 +187,7 @@ class AccountController extends Controller
 
     private function insert_enterprise_cookie(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "account_data" => "required|array",
             "account_data.*" => "required|array",
             "account_data.*.cookie" => "required|string",
@@ -217,7 +217,7 @@ class AccountController extends Controller
 
     private function insert_open_platform(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "account_data" => "required|array",
             "account_data.*" => "required|array",
             "account_data.*.refresh_token" => "required|string",
@@ -247,7 +247,7 @@ class AccountController extends Controller
 
     private function insert_download_ticket(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "account_data" => "required|array",
             "account_data.*" => "required|array",
             "account_data.*.surl" => "required|string",
@@ -281,7 +281,7 @@ class AccountController extends Controller
 
     public function select(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "column" => ["nullable", "string", Rule::in(Account::$attrs)],
             "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
         ]);
@@ -298,7 +298,7 @@ class AccountController extends Controller
 
     public function update(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "switch" => "required|boolean",
             "prov" => ["nullable", Rule::in(self::prov)],
             "id" => "required|array",
@@ -324,7 +324,7 @@ class AccountController extends Controller
     public static function updateInfo(Request|array $request, $needFilter = true)
     {
         if ($needFilter) {
-            $validator = Validator::make($request->post(), [
+            $validator = Validator::make($request->all(), [
                 "id" => "required|array",
                 "id.*" => "required|numeric",
             ]);
@@ -355,7 +355,7 @@ class AccountController extends Controller
 
     public function checkBanStatus(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);
@@ -406,7 +406,7 @@ class AccountController extends Controller
 
     public function delete(Request $request)
     {
-        $validator = Validator::make($request->post(), [
+        $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);

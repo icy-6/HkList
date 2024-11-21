@@ -9,6 +9,7 @@ use App\Http\Controllers\Config\MailConfigController;
 use App\Http\Controllers\Config\ParseConfigController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\ParseController;
+use App\Http\Controllers\RecordController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +50,10 @@ Route::prefix("/v1")->group(function () {
                 Route::post("/", [BlackListController::class, "insert"]);
                 Route::patch("/", [BlackListController::class, "update"]);
                 Route::delete("/", [BlackListController::class, "delete"]);
+            });
+
+            Route::prefix("/record")->group(function () {
+                Route::get("/", [RecordController::class, "select"]);
             });
 
             Route::prefix("/config")->group(function () {

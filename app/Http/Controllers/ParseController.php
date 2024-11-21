@@ -241,8 +241,6 @@ class ParseController extends Controller
 
     private static function refreshExpiredAccount(Account $account, $needPro)
     {
-        // download_ticket 不校验是否过期
-
         $account_type = $account["account_type"];
         $account_data = $account["account_data"];
 
@@ -255,6 +253,9 @@ class ParseController extends Controller
             $token_expires_at = Carbon::parse($account_data["token_expires_at"], config("app.timezone"));
             $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
             if (!$token_expires_at->isPast() && !$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
+        } else if ($account_type === "download_ticket") {
+            // download_ticket 不校验是否过期
+            return ResponseController::success(["isExpired" => false]);
         }
 
         $updateInfo = AccountController::updateInfo(["id" => [$account["id"]]], false);
