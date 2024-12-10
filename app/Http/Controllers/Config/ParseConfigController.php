@@ -30,10 +30,10 @@ class ParseConfigController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         UtilsController::updateEnv([
-            "HKLIST_PARSER_SERVER" => $request["parser_server"],
-            "HKLIST_PARSER_PASSWORD" => $request["parser_password"],
-            "HKLIST_PROXY_SERVER" => $request["proxy_server"],
-            "HKLIST_PROXY_PASSWORD" => $request["proxy_password"],
+            "HKLIST_PARSER_SERVER" => $request["parser_server"] ?? "",
+            "HKLIST_PARSER_PASSWORD" => $request["parser_password"] ?? "",
+            "HKLIST_PROXY_SERVER" => $request["proxy_server"] ?? "",
+            "HKLIST_PROXY_PASSWORD" => $request["proxy_password"] ?? "",
             "HKLIST_USER_AGENT" => $request["user_agent"],
             "HKLIST_PARSE_MODE" => $request["parse_mode"]
         ]);

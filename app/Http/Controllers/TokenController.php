@@ -81,7 +81,7 @@ class TokenController extends Controller
 
         $data = Token::query()
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
+            ->paginate($request["size"]);
 
         return ResponseController::success($data);
     }

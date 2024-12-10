@@ -11,6 +11,9 @@ return [
         "show_announce" => (bool)env("HKLIST_SHOW_ANNOUNCE", true),
         "announce" => env("HKLIST_ANNOUNCE", ""),
         "custom_button" => env("HKLIST_CUSTOM_BUTTON", ""),
+        "name" => env("app_name", "HkList"),
+        "logo" => env("app_logo", "/favicon.ico"),
+        'debug' => env("app_debug", false),
     ],
     "limit" => [
         "max_once" => (float)env("HKLIST_MAX_ONCE", 5),

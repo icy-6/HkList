@@ -289,7 +289,7 @@ class AccountController extends Controller
 
         $data = Account::query()
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
+            ->paginate($request["size"]);
 
         return ResponseController::success($data);
     }
@@ -343,11 +343,11 @@ class AccountController extends Controller
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
                 "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"])
             };
-            $data = $data->getData(true);
-            if ($data["code"] !== 200) return $data;
-            $data = $data["data"];
+            $update = $data->getData(true);
+            if ($update["code"] !== 200) return $data;
+            $update = $update["data"];
 
-            $account->update($data);
+            $account->update($update);
         }
 
         return ResponseController::success();

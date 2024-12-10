@@ -19,7 +19,7 @@ class RecordController extends Controller
 
         $data = Record::query()
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
+            ->paginate($request["size"]);
 
         return ResponseController::success($data);
     }

@@ -46,7 +46,7 @@ class BlackListController extends Controller
 
         $data = BlackList::query()
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->get();
+            ->paginate($request["size"]);
 
         return ResponseController::success($data);
     }

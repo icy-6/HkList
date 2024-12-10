@@ -21,15 +21,10 @@ class ParseController extends Controller
     {
         $config = config("hklist");
         return ResponseController::success([
-            "debug" => config("app.debug"),
+            ...collect($config["general"])->only(["debug", "show_announce", "announce", "custom_button", "name", "logo"]),
+            ...collect($config["limit"])->only(["max_once", "min_single_filesize", "max_single_filesize"]),
             "need_password" => $config["general"]["parse_password"] !== "",
-            "show_announce" => $config["general"]["show_announce"],
-            "announce" => $config["general"]["announce"],
-            "custom_button" => $config["general"]["custom_button"],
-            "max_once" => $config["limit"]["max_once"],
-            "min_single_filesize" => $config["limit"]["min_single_filesize"],
-            "max_single_filesize" => $config["limit"]["max_single_filesize"],
-            "have_account" => self::getRandomCookie($request)->getDate(true)["code"] === 200
+            "have_account" => self::getRandomCookie($request)->getData(true)["code"] === 200,
         ]);
     }
 
@@ -202,13 +197,25 @@ class ParseController extends Controller
         if ($max_download_daily_pre_account > 0) {
             $account = $account
                 ->leftJoin("records", function ($join) {
-                    $join->on("records.account_id", "=", "records.account_id")
-                        ->whereDate("records.created_at", "=", now());
+                    $join->on("records.account_id", "=", "accounts.id")->whereDate("records.created_at", "=", now());
                 })
-                ->rightJoin("file_lists", function ($join) {
+                ->leftJoin("file_lists", function ($join) {
                     $join->on("file_lists.fs_id", "=", "records.fs_id");
                 })
                 ->select("accounts.*", DB::raw('IFNULL(SUM(file_lists.size), 0) as total_size'))
+                ->groupBy([
+                    "accounts.id",
+                    "accounts.baidu_name",
+                    "accounts.uk",
+                    "accounts.account_type",
+                    "accounts.account_data",
+                    "accounts.switch",
+                    "accounts.reason",
+                    "accounts.prov",
+                    "accounts.used_at",
+                    "accounts.created_at",
+                    "accounts.updated_at"
+                ])
                 ->having('total_size', '<', $max_download_daily_pre_account);
         }
 
@@ -230,11 +237,7 @@ class ParseController extends Controller
         // 过期了获取一个新账号
         if ($isExpiredData["data"]["isExpired"]) return self::getRandomCookie($request);
 
-        if ($makeNew) {
-            $account->update([
-                "prov" => $province
-            ]);
-        }
+        if ($makeNew) $account->update(["prov" => $province]);
 
         return ResponseController::success($account);
     }
