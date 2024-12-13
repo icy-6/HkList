@@ -112,9 +112,20 @@ class AccountController extends Controller
         $saveAccountInfoData = $saveAccountInfo->getData(true);
         if ($saveAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("save_cookie:" . $saveAccountInfoData["message"]);
 
+        // 获取企业信息 (cid和到期时间)
+        $enterpriseInfo = BDWPApiController::getEnterpriseInfo($save_cookie);
+        $enterpriseInfoData = $enterpriseInfo->getData(true);
+        if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
+        $enterpriseInfoData = $enterpriseInfoData["data"];
+
+        $templateVariableInfo = BDWPApiController::getTemplateVariable($save_cookie);
+        $templateVariableInfoData = $templateVariableInfo->getData(true);
+        if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
+        $templateVariableInfoData = $templateVariableInfoData["data"];
+
         $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
         $downloadAccountInfoData = $downloadAccountInfo->getData(true);
-        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("save_cookie:" . $downloadAccountInfoData["message"]);
+        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("download_cookie:" . $downloadAccountInfoData["message"]);
         $downloadAccountInfoData = $downloadAccountInfoData["data"];
 
         // 检查链接是否有效
@@ -131,6 +142,8 @@ class AccountController extends Controller
                 "pwd" => $pwd,
                 "dir" => $dir,
                 "save_cookie" => $save_cookie,
+                "cid" => $enterpriseInfoData["cid"],
+                "bdstoken" => $templateVariableInfoData["bdstoken"],
                 "download_cookie" => $download_cookie
             ],
             "switch" => 1,
@@ -288,6 +301,21 @@ class AccountController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $data = Account::query()
+            ->withCount([
+                'records as total_count',
+                'records as today_count' => function ($query) {
+                    $query->whereDate('created_at', Carbon::today(config("app.timezone")));
+                }
+            ])
+            ->withSum([
+                'records as total_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id');
+                },
+                'records as today_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id')
+                        ->whereDate('records.created_at', Carbon::today(config("app.timezone")));
+                }
+            ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
             ->paginate($request["size"]);
 
@@ -299,20 +327,23 @@ class AccountController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            "switch" => "required|boolean",
+            "switch" => "nullable|boolean",
             "prov" => ["nullable", Rule::in(self::prov)],
             "id" => "required|array",
             "id.*" => "required|numeric",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $update = [];
+        if (isset($request["switch"])) {
+            $update["switch"] = true;
+            $update["reason"] = $request["switch"] ? "手动启用" : "手动禁用";
+        }
+        if (isset($request["prov"])) $update["prov"] = $request["prov"];
+
         $count = Account::query()
             ->whereIn("id", $request["id"])
-            ->update([
-                "switch" => $request["switch"],
-                "reason" => $request["switch"] ? "手动启用" : "手动禁用",
-                "prov" => $request["prov"]
-            ]);
+            ->update($update);
 
         if ($count === 0) {
             return ResponseController::updateFailed();
@@ -321,14 +352,16 @@ class AccountController extends Controller
         }
     }
 
-    public static function updateInfo(Request|array $request, $needFilter = true)
+    public static function updateInfo(Request $request, $data = [])
     {
-        if ($needFilter) {
+        if (count($data) === 0) {
             $validator = Validator::make($request->all(), [
                 "id" => "required|array",
                 "id.*" => "required|numeric",
             ]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        } else {
+            $request = $data;
         }
 
         $accounts = Account::query()
@@ -394,8 +427,7 @@ class AccountController extends Controller
             ];
 
             foreach ($data as $item) {
-                $item = $item->getData(true);
-                $_res["status"][] = $item["data"];
+                $_res["status"][] = $item->getData(true);
             }
 
             $res[] = $_res;

@@ -67,8 +67,6 @@ class ParseController extends Controller
 
         if (!in_array($request->ip(), $token["ip"])) {
             if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
-            // 插入当前ip
-            $token->update(["ip" => [$request->ip(), ...$token["ip"]]]);
         }
 
         // 检查是否已经过期
@@ -261,7 +259,7 @@ class ParseController extends Controller
             return ResponseController::success(["isExpired" => false]);
         }
 
-        $updateInfo = AccountController::updateInfo(["id" => [$account["id"]]], false);
+        $updateInfo = AccountController::updateInfo(new Request(), ["id" => [$account["id"]]]);
         $updateInfoData = $updateInfo->getData(true);
         // 判断解析模式 需要是超级会员的模式
         if ($needPro) {
@@ -291,7 +289,8 @@ class ParseController extends Controller
             "surl" => "required|string",
             "dir" => "required|string",
             "pwd" => "nullable|string",
-            "token" => "required|string"
+            "token" => "required|string",
+            "fingerprint" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -341,7 +340,7 @@ class ParseController extends Controller
             "dir" => $request["dir"],
             "pwd" => $request["pwd"],
             "token" => $request["token"],
-            "fingerprint" => $request["fingerprint"] ?? ""
+            "fingerprint" => $request["fingerprint"]
         ];
 
         if (isset($request["vcode_input"])) {
@@ -363,13 +362,23 @@ class ParseController extends Controller
         if ($responseData["code"] !== 200) return $response;
         $responseData = $responseData["data"];
 
-        $responseData = collect($responseData)->map(function ($item) use ($request, $json) {
+        $token = Token::query()->firstWhere("token", $request["token"]);
+        $ip = $request->ip();
+
+        if ($token["token"] !== "guest") {
+            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
+            if (!in_array($ip, $token["ip"])) {
+                if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+                // 插入当前ip
+                $token->update(["ip" => [$ip, ...$token["ip"]]]);
+            }
+        }
+
+        $responseData = collect($responseData)->map(function ($item) use ($json, $ip, $token) {
             $isLimit = false;
             if ($item["message"] !== "请求成功") return $item;
 
-            foreach ($item["urls"] as $url) {
-                if (!str_contains($url, "tsl=0") && !$isLimit) $isLimit = true;
-            }
+            foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") && !$isLimit) $isLimit = true;
 
             Account::query()
                 ->find($item["account_id"])
@@ -385,12 +394,12 @@ class ParseController extends Controller
             } else {
                 // 插入记录
                 Record::query()->create([
-                    "ip" => $request->ip(),
+                    "ip" => $ip,
                     "fingerprint" => $json["fingerprint"],
                     "fs_id" => $item["fs_id"],
                     "url" => $item["urls"][0],
                     "ua" => $item["ua"],
-                    "token_id" => Token::query()->firstWhere("token", $json["token"])["id"],
+                    "token_id" => $token["id"],
                     "account_id" => $item["account_id"],
                 ]);
             }

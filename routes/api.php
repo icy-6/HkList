@@ -42,6 +42,7 @@ Route::prefix("/v1")->group(function () {
                 Route::get("/", [TokenController::class, "select"]);
                 Route::post("/", [TokenController::class, "insert"]);
                 Route::patch("/", [TokenController::class, "update"]);
+                Route::patch("/switch", [TokenController::class, "updateSwitch"]);
                 Route::delete("/", [TokenController::class, "delete"]);
             });
 

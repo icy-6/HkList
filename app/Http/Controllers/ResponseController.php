@@ -212,4 +212,9 @@ class ResponseController extends Controller
     {
         return self::response(20036, 500, "下载盘内文件失败,errno: $errno, errmsg: $errmsg");
     }
+
+    public static function getTemplateVariableFailed($errno = "未知")
+    {
+        return self::response(20037, 500, "获取模板变量失败,errno: $errno");
+    }
 }

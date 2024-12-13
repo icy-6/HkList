@@ -493,7 +493,9 @@ class BDWPApiController extends Controller
 
     /**
      * errno: 31045 31326 风控
-     * string[]
+     * {
+     *     urls: string[]
+     * }
      */
     public static function downloadByDisk($cookie, $path, $ua)
     {
@@ -528,6 +530,55 @@ class BDWPApiController extends Controller
 
         return ResponseController::success([
             "urls" => array_reverse(array_map(fn($v) => $v["url"], $response["urls"]))
+        ]);
+    }
+
+    /**
+     * {
+     *     bdstoken: "xxx",
+     *     sign1: "xxx",
+     *     sign2: "xxx",
+     *     sign3: "xxxx",
+     * }
+     */
+    public static function getTemplateVariable($cookie)
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getTemplateVariable",
+            "get",
+            "https://pan.baidu.com/api/gettemplatevariable",
+            [
+                "headers" => [
+                    "User-Agent" => config("hklist.fake_user_agent"),
+                    "Cookie" => $cookie
+                ],
+                "query" => [
+                    "fields" => [
+                        "bdstoken",
+                        "sign1",
+                        "sign2",
+                        "sign3"
+                    ]
+                ]
+            ]
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["errno"]) ||
+            !isset($response["result"])
+        ) {
+            return ResponseController::getTemplateVariableFailed($response["errno"]);
+        }
+
+        return ResponseController::success([
+            "bdstoken" => $response["result"]["bdstoken"],
+            "sign1" => $response["result"]["sign1"],
+            "sign2" => $response["result"]["sign2"],
+            "sign3" => $response["result"]["sign3"],
         ]);
     }
 }

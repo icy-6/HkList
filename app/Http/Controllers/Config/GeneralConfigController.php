@@ -31,7 +31,7 @@ class GeneralConfigController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         UtilsController::updateEnv([
-            "HKLIST_ADMIN_PASSWORD" => $request["new_admin_password"] ?? config("hklist.general.admin_password"),
+            "HKLIST_ADMIN_PASSWORD" => $request["new_admin_password"] ?? "",
             "HKLIST_PARSE_PASSWORD" => $request["parse_password"] ?? "",
             "HKLIST_SHOW_ANNOUNCE" => $request["show_announce"],
             "HKLIST_ANNOUNCE" => $request["announce"] ?? "",

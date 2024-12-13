@@ -97,7 +97,7 @@ class TokenController extends Controller
             "can_use_ip_count" => "required|numeric",
             "ip" => "nullable|array",
             "ip.*" => "required|string",
-            "expires_at" => "required|date_format:Y-m-d H:i:s",
+            "expires_at" => "nullable|date_format:Y-m-d H:i:s",
             "switch" => "required|boolean",
             "reason" => "nullable|string"
         ]);
@@ -113,7 +113,31 @@ class TokenController extends Controller
                 "ip" => $request["ip"],
                 "expires_at" => $request["expires_at"],
                 "switch" => $request["switch"],
-                "reason" => $request["reason"]
+                "reason" => $request["reason"] ?? ""
+            ]);
+
+        if ($count === 0) {
+            return ResponseController::updateFailed();
+        } else {
+            return ResponseController::success();
+        }
+    }
+
+    public function updateSwitch(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
+            "switch" => "required|boolean",
+            "reason" => "nullable|string"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $count = Token::query()
+            ->whereIn("id", $request["id"])
+            ->update([
+                "switch" => $request["switch"],
+                "reason" => $request["reason"] ?? ""
             ]);
 
         if ($count === 0) {

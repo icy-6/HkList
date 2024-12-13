@@ -39,4 +39,9 @@ class Account extends Model
             "used_at" => "datetime"
         ];
     }
+
+    public function records()
+    {
+        return $this->hasMany(Record::class);
+    }
 }
