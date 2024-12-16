@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Token;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -80,6 +81,21 @@ class TokenController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $data = Token::query()
+            ->withCount([
+                'records as total_count',
+                'records as today_count' => function ($query) {
+                    $query->whereDate('created_at', Carbon::today(config("app.timezone")));
+                }
+            ])
+            ->withSum([
+                'records as total_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id');
+                },
+                'records as today_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id')
+                        ->whereDate('records.created_at', Carbon::today(config("app.timezone")));
+                }
+            ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
             ->paginate($request["size"]);
 

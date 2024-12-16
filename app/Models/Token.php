@@ -41,4 +41,9 @@ class Token extends Model
             "switch" => "boolean"
         ];
     }
+
+    public function records()
+    {
+        return $this->hasMany(Record::class);
+    }
 }

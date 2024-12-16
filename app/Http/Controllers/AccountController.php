@@ -336,7 +336,7 @@ class AccountController extends Controller
 
         $update = [];
         if (isset($request["switch"])) {
-            $update["switch"] = true;
+            $update["switch"] = $request["switch"];
             $update["reason"] = $request["switch"] ? "手动启用" : "手动禁用";
         }
         if (isset($request["prov"])) $update["prov"] = $request["prov"];
