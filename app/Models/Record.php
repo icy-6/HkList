@@ -11,7 +11,7 @@ class Record extends Model
         "ip",
         "fingerprint",
         "fs_id",
-        "url",
+        "urls",
         "ua",
         "token_id",
         "account_id",
@@ -23,9 +23,16 @@ class Record extends Model
         "ip",
         "fingerprint",
         "fs_id",
-        "url",
+        "urls",
         "ua",
         "token_id",
         "account_id"
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'urls' => "json"
+        ];
+    }
 }

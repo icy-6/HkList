@@ -115,22 +115,31 @@ class TokenController extends Controller
             "ip.*" => "required|string",
             "expires_at" => "nullable|date_format:Y-m-d H:i:s",
             "switch" => "required|boolean",
-            "reason" => "nullable|string"
+            "reason" => "nullable|string",
+            "token" => "nullable|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $update = [
+            "count" => $request["count"],
+            "size" => $request["size"],
+            "day" => $request["day"],
+            "can_use_ip_count" => $request["can_use_ip_count"],
+            "ip" => $request["ip"],
+            "expires_at" => $request["expires_at"],
+            "switch" => $request["switch"],
+            "reason" => $request["reason"] ?? ""
+        ];
+        if (isset($request["token"])) $update["token"] = $request["token"];
+
+        if (in_array(1, $request["id"])) {
+            // 如果是guest
+            if($request["token"]) return ResponseController::canNotChangeGuestToken();
+        }
+
         $count = Token::query()
             ->whereIn("id", $request["id"])
-            ->update([
-                "count" => $request["count"],
-                "size" => $request["size"],
-                "day" => $request["day"],
-                "can_use_ip_count" => $request["can_use_ip_count"],
-                "ip" => $request["ip"],
-                "expires_at" => $request["expires_at"],
-                "switch" => $request["switch"],
-                "reason" => $request["reason"] ?? ""
-            ]);
+            ->update($update);
 
         if ($count === 0) {
             return ResponseController::updateFailed();
@@ -148,6 +157,11 @@ class TokenController extends Controller
             "reason" => "nullable|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        if (in_array(1, $request["id"])) {
+            // 如果是guest
+            if($request["token"]) return ResponseController::canNotChangeGuestToken();
+        }
 
         $count = Token::query()
             ->whereIn("id", $request["id"])
@@ -170,6 +184,11 @@ class TokenController extends Controller
             "id.*" => "required|numeric",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        if (in_array(1, $request["id"])) {
+            // 如果是guest
+            if($request["token"]) return ResponseController::canNotChangeGuestToken();
+        }
 
         $count = Token::query()
             ->whereIn("id", $request["id"])

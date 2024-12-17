@@ -28,7 +28,6 @@ return [
         "parser_password" => env("HKLIST_PARSER_PASSWORD", ""),
         "parse_mode" => (int)env("HKLIST_PARSE_MODE", 1),
         "user_agent" => env("HKLIST_USER_AGENT", ""),
-        "proxy_server" => env("HKLIST_PROXY_SERVER", ""),
-        "proxy_password" => env("HKLIST_PROXY_PASSWORD", ""),
+        "use_exploit" => env("HKLIST_USE_EXPLOIT", false),
     ]
 ];

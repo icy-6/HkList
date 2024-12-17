@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
 class V1Controller extends Controller
 {
-    public static function request(Request $request, $json)
+    public static function request(Request $request)
     {
         $cookie = ParseController::getRandomCookie($request);
         $cookieData = $cookie->getData(true);
@@ -21,7 +21,14 @@ class V1Controller extends Controller
         $account = $cookieData["data"];
         $cookie = $account["account_data"]["cookie"];
 
-        $saveToDisk = BDWPApiController::saveToDiskWeb($cookie, $json["shareid"], $json["fs_id"], $json["uk"], $json["randsk"], "https://pan.baidu.com/s/$json[surl]");
+        $saveToDisk = BDWPApiController::saveToDiskWeb(
+            $cookie,
+            $request["shareid"],
+            $request["fs_id"],
+            $request["uk"],
+            $request["randsk"],
+            "https://pan.baidu.com/s/$request[surl]"
+        );
         $saveToDiskData = $saveToDisk->getData(true);
         if ($saveToDiskData["code"] !== 200) {
             if (!str_contains($saveToDiskData["message"], "errno: 2")) {
@@ -30,7 +37,11 @@ class V1Controller extends Controller
                     "reason" => $saveToDiskData["message"],
                     "last_use_at" => now()
                 ]);
-                UtilsController::sendMail("V1Controller::saveToDisk", "解析失败,账号ID:" . Json::encode([$account["id"]]), "解析失败");
+                UtilsController::sendMail(
+                    "V1Controller::saveToDisk",
+                    "解析失败,账号ID:" . Json::encode([$account["id"]]),
+                    "解析失败"
+                );
             }
             return $saveToDisk;
         }
@@ -50,7 +61,8 @@ class V1Controller extends Controller
                 "filename" => $filename,
                 "fs_id" => $fs_id,
                 "ua" => $ua,
-                "account_id" => $account["id"]
+                "account_id" => $account["id"],
+                "urls" => []
             ];
 
             if ($dlinkData["code"] !== 200) {
@@ -61,12 +73,16 @@ class V1Controller extends Controller
                         "reason" => $dlinkData["message"],
                         "last_use_at" => now()
                     ]);
-                $urls[] = $url;
-                UtilsController::sendMail("V1Controller::downloadByDisk", "解析失败,账号ID:" . Json::encode([$account["id"]]), "解析失败");
-                return ResponseController::success($urls);
+                UtilsController::sendMail(
+                    "V1Controller::downloadByDisk",
+                    "解析失败,账号ID:" . Json::encode([$account["id"]]),
+                    "解析失败"
+                );
+            } else {
+                // 请求成功 则 赋值 urls
+                $url["urls"] = $dlinkData["data"]["urls"];
             }
 
-            $url["urls"] = $dlinkData["data"]["urls"];
             $urls[] = $url;
         }
 

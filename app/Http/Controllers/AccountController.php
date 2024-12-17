@@ -420,17 +420,11 @@ class AccountController extends Controller
                 return ResponseController::unknownAccountType();
             }
 
-            $_res = [
+            $res[] = [
                 "id" => $account["id"],
                 "account_type" => $account_type,
-                "status" => []
+                "status" => array_map(fn($item) => $item->getData(true), $data)
             ];
-
-            foreach ($data as $item) {
-                $_res["status"][] = $item->getData(true);
-            }
-
-            $res[] = $_res;
         }
 
         return ResponseController::success($res);

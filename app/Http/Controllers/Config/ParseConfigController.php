@@ -21,10 +21,9 @@ class ParseConfigController extends Controller
         $validator = Validator::make($request->all(), [
             "parser_server" => "nullable|string",
             "parser_password" => "nullable|string",
-            "proxy_server" => "nullable|boolean",
-            "proxy_password" => "nullable|string",
             "user_agent" => "required|string",
-            "parse_mode" => "required|numeric"
+            "parse_mode" => "required|numeric",
+            "use_exploit" => "required|boolean",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -32,10 +31,9 @@ class ParseConfigController extends Controller
         UtilsController::updateEnv([
             "HKLIST_PARSER_SERVER" => $request["parser_server"] ?? "",
             "HKLIST_PARSER_PASSWORD" => $request["parser_password"] ?? "",
-            "HKLIST_PROXY_SERVER" => $request["proxy_server"] ?? "",
-            "HKLIST_PROXY_PASSWORD" => $request["proxy_password"] ?? "",
             "HKLIST_USER_AGENT" => $request["user_agent"],
-            "HKLIST_PARSE_MODE" => $request["parse_mode"]
+            "HKLIST_PARSE_MODE" => $request["parse_mode"],
+            "HKLIST_USE_EXPLOIT" => $request["use_exploit"],
         ]);
 
         return ResponseController::success();

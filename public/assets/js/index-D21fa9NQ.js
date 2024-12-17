@@ -1,0 +1,1 @@
+import{_ as r}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{C as e}from"./index-D2qLX_da.js";import{a,w as n,o as s,g as c}from"./index-D_e8F7w3.js";const _={};function f(d,t){const o=e;return s(),a(o,null,{default:n(()=>t[0]||(t[0]=[c("history")])),_:1})}const l=r(_,[["render",f]]);export{l as default};

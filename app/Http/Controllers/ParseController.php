@@ -63,33 +63,32 @@ class ParseController extends Controller
                 "size" => $token["size"] - $records["size"],
                 "expires_at" => $token["expires_at"]
             ]);
+        } else {
+            // 非游客
+            if (!in_array($request->ip(), $token["ip"]) && count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+
+            // 检查是否已经过期
+            if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
+
+            $records = Record::query()
+                ->where("token_id", $token["id"])
+                ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
+                ->selectRaw("SUM(size) as size,COUNT(*) as count")
+                ->first();
+
+            if (
+                $records["count"] >= $token["count"] ||
+                $records["size"] >= $token["size"]
+            ) {
+                return ResponseController::TokenQuotaHasBeenUsedUp();
+            }
+
+            return ResponseController::success([
+                "count" => $token["count"] - $records["count"],
+                "size" => $token["size"] - $records["size"],
+                "expires_at" => $token["expires_at"] ?? "未使用"
+            ]);
         }
-
-        if (!in_array($request->ip(), $token["ip"])) {
-            if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
-        }
-
-        // 检查是否已经过期
-        if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
-
-        $records = Record::query()
-            ->where("token_id", $token["id"])
-            ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
-            ->selectRaw("SUM(size) as size,COUNT(*) as count")
-            ->first();
-
-        if (
-            $records["count"] >= $token["count"] ||
-            $records["size"] >= $token["size"]
-        ) {
-            return ResponseController::TokenQuotaHasBeenUsedUp();
-        }
-
-        return ResponseController::success([
-            "count" => $token["count"] - $records["count"],
-            "size" => $token["size"] - $records["size"],
-            "expires_at" => $token["expires_at"] ?? "未使用"
-        ]);
     }
 
     public function getFileList(Request $request)
@@ -102,7 +101,6 @@ class ParseController extends Controller
             "num" => "nullable|numeric",
             "order" => ["nullable", Rule::in(["time", "filename"])]
         ]);
-
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $fileList = BDWPApiController::getFileList($request["surl"], $request["pwd"], $request["dir"], $request["page"], $request["num"], $request["order"]);
@@ -121,6 +119,7 @@ class ParseController extends Controller
 
             if ($find) {
                 $find->update([
+                    "filename" => $file["server_filename"],
                     "size" => $file["size"],
                     "md5" => $file["md5"]
                 ]);
@@ -143,25 +142,24 @@ class ParseController extends Controller
         return BDWPApiController::getVcode();
     }
 
-    public static function getAccountType()
+    public static function getAccountType($parse_mode = null)
     {
-        $parse_mode = config("hklist.parse.parse_mode");
-        return match ($parse_mode) {
+        return match ($parse_mode ?? config("hklist.parse.parse_mode")) {
             // 正常模式
-            1, 2, 3, 4, 6, 7, 8, 9 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
+            1, 2 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
-            5, 10 => ResponseController::success(["account_type" => "open_platform", "account_data" => ["vip_type" => "超级会员"]]),
+            3, 4 => ResponseController::success(["account_type" => "open_platform", "account_data" => ["vip_type" => "超级会员"]]),
             // 企业平台
-            11 => ResponseController::success(["account_type" => "enterprise_cookie", "account_data" => []]),
-            // 漏洞接口
-            12 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
+            5 => ResponseController::success(["account_type" => "enterprise_cookie", "account_data" => []]),
             // 下载卷接口
-            13 => ResponseController::success(["account_type" => "download_ticket", "account_data" => []]),
+            6 => ResponseController::success(["account_type" => "download_ticket", "account_data" => []]),
+            // 漏洞接口
+            0 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
             default => ResponseController::unknownParseMode()
         };
     }
 
-    public static function getRandomCookie(Request $request, $makeNew = false)
+    public static function getRandomCookie(Request $request, $makeNew = false, $lessThan100M = false)
     {
         $province = null;
         $limit_cn = config("hklist.limit.limit_cn");
@@ -173,11 +171,11 @@ class ParseController extends Controller
             if ($provData["code"] !== 200) return $prov;
             $provData = $provData["data"];
 
-            if (config("hklist.limit.limit_cn") && !$provData["isCn"]) return ResponseController::unsupportedCountry();
+            if ($limit_cn && !$provData["isCn"]) return ResponseController::unsupportedCountry();
             $province = $provData["province"];
         }
 
-        $accountType = self::getAccountType();
+        $accountType = self::getAccountType($lessThan100M ? 0 : null);
         $accountTypeData = $accountType->getData(true);
         if ($accountTypeData["code"] !== 200) return $accountType;
         $accountTypeData = $accountTypeData["data"];
@@ -223,7 +221,7 @@ class ParseController extends Controller
             // 判断存不存在 prov
             // 如果有那么就判断有没有还没有分配 prov 的账号
             if ($province !== null && !$makeNew) {
-                return self::getRandomCookie($request, true);
+                return self::getRandomCookie($request, true, $lessThan100M);
             } else {
                 return ResponseController::accountIsNotEnough();
             }
@@ -232,8 +230,9 @@ class ParseController extends Controller
         // 判断账号是否需要续期
         $isExpired = self::refreshExpiredAccount($account, $needPro);
         $isExpiredData = $isExpired->getData(true);
+        $isExpiredData = $isExpiredData["data"];
         // 过期了获取一个新账号
-        if ($isExpiredData["data"]["isExpired"]) return self::getRandomCookie($request);
+        if ($isExpiredData["isExpired"]) return self::getRandomCookie($request);
 
         if ($makeNew) $account->update(["prov" => $province]);
 
@@ -265,15 +264,18 @@ class ParseController extends Controller
         if ($needPro) {
             // 判断账号现在的类型
             $newAccount = Account::query()->find($account["id"]);
-            if ($newAccount["account_data"] !== "超级会员") {
+            if ($newAccount["account_data"]["vip_type"] !== "超级会员") {
                 $account->update(["switch" => false, "reason" => "会员过期"]);
                 return ResponseController::success(["isExpired" => true]);
             }
         }
-        if ($updateInfoData["code"] === 200) return ResponseController::success(["isExpired" => false]);
 
-        $account->update(["switch" => false, "reason" => "账号过期"]);
-        return ResponseController::success(["isExpired" => true]);
+        if ($updateInfoData["code"] === 200) {
+            $account->update(["switch" => false, "reason" => "账号过期"]);
+            return ResponseController::success(["isExpired" => true]);
+        }
+
+        return ResponseController::success(["isExpired" => false]);
     }
 
     public function getDownloadLinks(Request $request)
@@ -294,10 +296,9 @@ class ParseController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        // 每次请求不能超过10个文件,请分割处理
+        // 每次请求不能超过多少个
         $max_once = config("hklist.limit.max_once");
-        $limit = $max_once >= 10 ? 10 : $max_once;
-        if (count($request["fs_id"]) > $limit) return ResponseController::filesOverLoaded();
+        if (count($request["fs_id"]) > $max_once) return ResponseController::filesOverLoaded();
 
         // 检查限制还能不能解析
         $checkLimitRes = self::getLimit($request);
@@ -319,6 +320,7 @@ class ParseController extends Controller
             ->whereIn("fs_id", $request["fs_id"])
             ->get();
 
+        // 神秘文件
         if ($fileList->count() !== count($request["fs_id"])) return ResponseController::unknownFsId();
 
         $min_filesize = config("hklist.limit.min_single_filesize");
@@ -331,32 +333,8 @@ class ParseController extends Controller
         // 检查文件总大小是否大于剩余配额
         if ($fileList->sum("size") > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
 
-        $json = [
-            "randsk" => $request["randsk"],
-            "uk" => $request["uk"],
-            "shareid" => $request["shareid"],
-            "fs_id" => $request["fs_id"],
-            "surl" => $request["surl"],
-            "dir" => $request["dir"],
-            "pwd" => $request["pwd"],
-            "token" => $request["token"],
-            "fingerprint" => $request["fingerprint"]
-        ];
-
-        if (isset($request["vcode_input"])) {
-            $validator = Validator::make($request->all(), [
-                "vcode_input" => "required|string",
-                "vcode_str" => "required|string"
-            ]);
-            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-            $json["vcode_input"] = $request["vcode_input"];
-            $json["vcode_str"] = $request["vcode_str"];
-        }
-
-        // 代理服务器未完成
         $response = match (config("hklist.parse.parse_mode")) {
-            1 => V1Controller::request($request, $json)
+            1 => V1Controller::request($request)
         };
         $responseData = $response->getData(true);
         if ($responseData["code"] !== 200) return $response;
@@ -366,19 +344,21 @@ class ParseController extends Controller
         $ip = $request->ip();
 
         if ($token["token"] !== "guest") {
-            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
             if (!in_array($ip, $token["ip"])) {
                 if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
                 // 插入当前ip
                 $token->update(["ip" => [$ip, ...$token["ip"]]]);
             }
+            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
         }
 
-        $responseData = collect($responseData)->map(function ($item) use ($json, $ip, $token) {
-            $isLimit = false;
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token) {
             if ($item["message"] !== "请求成功") return $item;
 
-            foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") && !$isLimit) $isLimit = true;
+            $isLimit = false;
+            foreach ($item["urls"] as $url) {
+                if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
+            }
 
             Account::query()
                 ->find($item["account_id"])
@@ -389,15 +369,14 @@ class ParseController extends Controller
                 ]);
 
             if ($isLimit) {
-                $item["message"] = "账号已限速";
-                unset($item["urls"]);
+                $item["message"] = "下载链接已限速,推荐重新解析";
             } else {
                 // 插入记录
                 Record::query()->create([
-                    "ip" => $ip,
-                    "fingerprint" => $json["fingerprint"],
+                    "ip" => $request->ip(),
+                    "fingerprint" => $request["fingerprint"],
                     "fs_id" => $item["fs_id"],
-                    "url" => $item["urls"][0],
+                    "urls" => $item["urls"],
                     "ua" => $item["ua"],
                     "token_id" => $token["id"],
                     "account_id" => $item["account_id"],

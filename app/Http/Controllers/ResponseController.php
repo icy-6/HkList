@@ -150,7 +150,7 @@ class ResponseController extends Controller
 
     public static function blackListExists()
     {
-        return self::response(20025, 400, "该特征已存在");
+        return self::response(20025, 400, "该识别码已存在");
     }
 
     public static function filesOverLoaded()
@@ -190,7 +190,7 @@ class ResponseController extends Controller
 
     public static function unsupportedCountry()
     {
-        return self::response(20032, 400, "不支持的国家");
+        return self::response(20032, 400, "不支持非中国国家");
     }
 
     public static function accountIsNotEnough()
@@ -216,5 +216,15 @@ class ResponseController extends Controller
     public static function getTemplateVariableFailed($errno = "未知")
     {
         return self::response(20037, 500, "获取模板变量失败,errno: $errno");
+    }
+
+    public static function tableExists($table)
+    {
+        return self::response(20038, 500, "表 $table 已存在");
+    }
+
+    public static function canNotChangeGuestToken()
+    {
+        return self::response(20039, 400, "不能修改游客的卡密");
     }
 }

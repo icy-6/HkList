@@ -56,21 +56,23 @@ class BlackListController extends Controller
         $validator = Validator::make($request->all(), [
             "id" => "required|array",
             "id.*" => "required|numeric",
-            "type" => ["required", Rule::in("ip", "fingerprint")],
-            "identifier" => "required|string",
+            "type" => ["nullable", Rule::in("ip", "fingerprint")],
+            "identifier" => "nullable|string",
             "reason" => "required|string",
             "expires_at" => "required|date_format:Y-m-d H:i:s"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $update = [
+            "reason" => $request["reason"],
+            "expires_at" => $request["expires_at"]
+        ];
+        if (isset($request["type"])) $update["type"] = $request["type"];
+        if (isset($request["identifier"])) $update["identifier"] = $request["identifier"];
+
         $count = BlackList::query()
             ->whereIn("id", $request["id"])
-            ->update([
-                "type" => $request["type"],
-                "identifier" => $request["identifier"],
-                "reason" => $request["reason"],
-                "expires_at" => $request["expires_at"]
-            ]);
+            ->update($update);
 
         if ($count === 0) {
             return ResponseController::updateFailed();

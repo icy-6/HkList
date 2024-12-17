@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
@@ -40,7 +41,9 @@ class InstallController extends Controller
         config(['database' => $dbConfig]);
 
         try {
-            if (Schema::hasTable('accounts')) Schema::drop('accounts');
+            DB::beginTransaction();
+
+            if (Schema::hasTable('accounts')) return ResponseController::tableExists('accounts');
             Schema::create("accounts", function (Blueprint $table) {
                 $table->id();
                 $table->text("baidu_name");
@@ -54,7 +57,7 @@ class InstallController extends Controller
                 $table->timestamps();
             });
 
-            if (Schema::hasTable('black_lists')) Schema::drop('black_lists');
+            if (Schema::hasTable('black_lists')) return ResponseController::tableExists('black_lists');
             Schema::create("black_lists", function (Blueprint $table) {
                 $table->id();
                 $table->enum("type", ["ip", "fingerprint"]);
@@ -64,7 +67,7 @@ class InstallController extends Controller
                 $table->timestamps();
             });
 
-            if (Schema::hasTable('file_lists')) Schema::drop('file_lists');
+            if (Schema::hasTable('file_lists')) return ResponseController::tableExists('file_lists');
             Schema::create("file_lists", function (Blueprint $table) {
                 $table->id();
                 $table->text("surl");
@@ -75,20 +78,20 @@ class InstallController extends Controller
                 $table->timestamps();
             });
 
-            if (Schema::hasTable('records')) Schema::drop('records');
+            if (Schema::hasTable('records')) return ResponseController::tableExists('records');
             Schema::create("records", function (Blueprint $table) {
                 $table->id();
                 $table->text("ip");
                 $table->text("fingerprint");
                 $table->unsignedBigInteger("fs_id");
-                $table->longText("url");
+                $table->json("urls");
                 $table->text("ua");
                 $table->unsignedBigInteger("token_id");
                 $table->unsignedBigInteger("account_id");
                 $table->timestamps();
             });
 
-            if (Schema::hasTable('tokens')) Schema::drop('tokens');
+            if (Schema::hasTable('tokens')) return ResponseController::tableExists('tokens');
             Schema::create("tokens", function (Blueprint $table) {
                 $table->id();
                 $table->text("token");
@@ -115,6 +118,8 @@ class InstallController extends Controller
                 "reason" => "",
                 "expires_at" => "2099-01-01 00:00:00",
             ]);
+
+            DB::commit();
 
             $key = "base64:" . base64_encode(Encrypter::generateKey(config("app.cipher")));
             config(["app.key" => $key]);
