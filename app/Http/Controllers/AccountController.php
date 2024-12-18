@@ -36,8 +36,7 @@ class AccountController extends Controller
             ],
             "switch" => 1,
             "reason" => "",
-            "prov" => null,
-            "used_at" => now()->format("Y-m-d H:i:s")
+            "prov" => null
         ]);
     }
 
@@ -69,8 +68,7 @@ class AccountController extends Controller
             ],
             "switch" => !$is_expired,
             "reason" => $is_expired ? "企业套餐已过期" : "",
-            "prov" => null,
-            "used_at" => now()->format("Y-m-d H:i:s")
+            "prov" => null
         ]);
     }
 
@@ -100,8 +98,7 @@ class AccountController extends Controller
             ],
             "switch" => 1,
             "reason" => "",
-            "prov" => null,
-            "used_at" => now()->format("Y-m-d H:i:s")
+            "prov" => null
         ]);
     }
 
@@ -148,8 +145,7 @@ class AccountController extends Controller
             ],
             "switch" => 1,
             "reason" => "",
-            "prov" => null,
-            "used_at" => now()->format("Y-m-d H:i:s")
+            "prov" => null
         ]);
     }
 

@@ -128,14 +128,12 @@ class TokenController extends Controller
             "ip" => $request["ip"],
             "expires_at" => $request["expires_at"],
             "switch" => $request["switch"],
-            "reason" => $request["reason"] ?? ""
+            "reason" => $request["reason"] ?? "未指定原因"
         ];
         if (isset($request["token"])) $update["token"] = $request["token"];
 
-        if (in_array(1, $request["id"])) {
-            // 如果是guest
-            if($request["token"]) return ResponseController::canNotChangeGuestToken();
-        }
+        // 如果是guest
+        if (in_array(1, $request["id"]) && $request["token"]) return ResponseController::canNotChangeGuestToken();
 
         $count = Token::query()
             ->whereIn("id", $request["id"])
@@ -158,10 +156,8 @@ class TokenController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        if (in_array(1, $request["id"])) {
-            // 如果是guest
-            if($request["token"]) return ResponseController::canNotChangeGuestToken();
-        }
+        // 如果是guest
+        if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken();
 
         $count = Token::query()
             ->whereIn("id", $request["id"])
@@ -185,10 +181,8 @@ class TokenController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        if (in_array(1, $request["id"])) {
-            // 如果是guest
-            if($request["token"]) return ResponseController::canNotChangeGuestToken();
-        }
+        // 如果是guest
+        if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken();
 
         $count = Token::query()
             ->whereIn("id", $request["id"])

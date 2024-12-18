@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Token extends Model
 {
+    use SoftDeletes;
+
     public static array $attrs = [
         "id",
         "token",
@@ -19,6 +22,7 @@ class Token extends Model
         "expires_at",
         "created_at",
         "updated_at",
+        "deleted_at"
     ];
 
     protected $fillable = [

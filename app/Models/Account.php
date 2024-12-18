@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Account extends Model
 {
+    use SoftDeletes;
+
     public static array $attrs = [
         "id",
         "baidu_name",
@@ -15,9 +18,9 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
-        "used_at",
         "created_at",
         "updated_at",
+        "deleted_at"
     ];
 
     protected $fillable = [
@@ -27,16 +30,14 @@ class Account extends Model
         "account_data",
         "switch",
         "reason",
-        "prov",
-        "used_at"
+        "prov"
     ];
 
     protected function casts(): array
     {
         return [
             "account_data" => "json",
-            "switch" => "boolean",
-            "used_at" => "datetime"
+            "switch" => "boolean"
         ];
     }
 

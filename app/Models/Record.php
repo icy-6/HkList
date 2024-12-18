@@ -35,4 +35,19 @@ class Record extends Model
             'urls' => "json"
         ];
     }
+
+    public function token()
+    {
+        return $this->belongsTo(Token::class)->withTrashed();
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class)->withTrashed();
+    }
+
+    public function file()
+    {
+        return $this->hasOne(FileList::class, "id", "fs_id");
+    }
 }

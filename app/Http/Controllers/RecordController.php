@@ -18,6 +18,7 @@ class RecordController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $data = Record::query()
+            ->with(["token", "account", "file"])
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
             ->paginate($request["size"]);
 

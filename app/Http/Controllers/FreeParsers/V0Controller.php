@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Parsers;
+namespace App\Http\Controllers\FreeParsers;
 
 use App\Http\Controllers\Api\BDWPApiController;
 use App\Http\Controllers\Controller;
@@ -11,7 +11,7 @@ use App\Models\Account;
 use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\Request;
 
-class V1Controller extends Controller
+class V0Controller extends Controller
 {
     public static function request(Request $request)
     {
@@ -38,7 +38,7 @@ class V1Controller extends Controller
                     "last_use_at" => now()
                 ]);
                 UtilsController::sendMail(
-                    "V1Controller::saveToDisk",
+                    "V0Controller::saveToDisk",
                     "解析失败,账号ID:" . Json::encode([$account["id"]]),
                     "解析失败"
                 );
@@ -74,7 +74,7 @@ class V1Controller extends Controller
                         "last_use_at" => now()
                     ]);
                 UtilsController::sendMail(
-                    "V1Controller::downloadByDisk",
+                    "V0Controller::downloadByDisk",
                     "解析失败,账号ID:" . Json::encode([$account["id"]]),
                     "解析失败"
                 );

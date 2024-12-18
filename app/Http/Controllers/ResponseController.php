@@ -227,4 +227,9 @@ class ResponseController extends Controller
     {
         return self::response(20039, 400, "不能修改游客的卡密");
     }
+
+    public static function tokenHasBeenBaned($reason)
+    {
+        return self::response(20040, 400, "卡密已被封禁, 原因: $reason");
+    }
 }

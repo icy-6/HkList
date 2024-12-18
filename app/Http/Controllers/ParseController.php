@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\BDWPApiController;
-use App\Http\Controllers\Parsers\V1Controller;
+use App\Http\Controllers\FreeParsers\V0Controller;
 use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Record;
@@ -37,6 +37,8 @@ class ParseController extends Controller
 
         $token = Token::query()->firstWhere("token", $request["token"]);
         if (!$token) return ResponseController::TokenNotExists();
+
+        if (!$token["switch"]) return ResponseController::tokenHasBeenBaned($token["reason"]);
 
         // 判断游客
         if ($request["token"] === "guest") {
@@ -154,7 +156,7 @@ class ParseController extends Controller
             // 下载卷接口
             6 => ResponseController::success(["account_type" => "download_ticket", "account_data" => []]),
             // 漏洞接口
-            0 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
+            "exploit" => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
             default => ResponseController::unknownParseMode()
         };
     }
@@ -175,7 +177,7 @@ class ParseController extends Controller
             $province = $provData["province"];
         }
 
-        $accountType = self::getAccountType($lessThan100M ? 0 : null);
+        $accountType = self::getAccountType($lessThan100M ? "exploit" : null);
         $accountTypeData = $accountType->getData(true);
         if ($accountTypeData["code"] !== 200) return $accountType;
         $accountTypeData = $accountTypeData["data"];
@@ -208,9 +210,9 @@ class ParseController extends Controller
                     "accounts.switch",
                     "accounts.reason",
                     "accounts.prov",
-                    "accounts.used_at",
                     "accounts.created_at",
-                    "accounts.updated_at"
+                    "accounts.updated_at",
+                    "accounts.deleted_at",
                 ])
                 ->having('total_size', '<', $max_download_daily_pre_account);
         }
@@ -232,7 +234,7 @@ class ParseController extends Controller
         $isExpiredData = $isExpired->getData(true);
         $isExpiredData = $isExpiredData["data"];
         // 过期了获取一个新账号
-        if ($isExpiredData["isExpired"]) return self::getRandomCookie($request);
+        if ($isExpiredData["isExpired"]) return self::getRandomCookie($request, false, $lessThan100M);
 
         if ($makeNew) $account->update(["prov" => $province]);
 
@@ -334,7 +336,7 @@ class ParseController extends Controller
         if ($fileList->sum("size") > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
 
         $response = match (config("hklist.parse.parse_mode")) {
-            1 => V1Controller::request($request)
+            0 => V0Controller::request($request)
         };
         $responseData = $response->getData(true);
         if ($responseData["code"] !== 200) return $response;
@@ -363,7 +365,6 @@ class ParseController extends Controller
             Account::query()
                 ->find($item["account_id"])
                 ->update([
-                    "last_use_at" => now(),
                     "switch" => !$isLimit,
                     "reason" => $isLimit ? "账号已限速" : ""
                 ]);

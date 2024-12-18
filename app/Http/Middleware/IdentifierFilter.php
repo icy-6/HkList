@@ -25,6 +25,7 @@ class IdentifierFilter
 
             $validator = Validator::make($request->all(), ["fingerprint" => "required|string"]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
             $fingerprint = BlackList::query()->firstWhere(["type" => "fingerprint", "identifier" => $request["fingerprint"]]);
             if ($fingerprint) return ResponseController::inBlackList();
         }
