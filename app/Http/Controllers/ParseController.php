@@ -42,11 +42,16 @@ class ParseController extends Controller
 
         // 判断游客
         if ($request["token"] === "guest") {
+            $validator = Validator::make($request->all(), [
+                "rand2" => "required|string",
+            ]);
+            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
             // 绑定指纹,每日刷新
             $records = Record::query()
                 ->where("token_id", $token["id"])
                 ->where(function (Builder $query) use ($request) {
-                    $query->where("fingerprint", $request["fingerprint"])
+                    $query->where("fingerprint", $request["rand2"])
                         ->orWhere("ip", $request->ip());
                 })
                 ->whereDate("records.created_at", "=", now())
@@ -295,7 +300,7 @@ class ParseController extends Controller
             "dir" => "required|string",
             "pwd" => "nullable|string",
             "token" => "required|string",
-            "fingerprint" => "required|string"
+            "rand2" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -376,7 +381,7 @@ class ParseController extends Controller
                 // 插入记录
                 Record::query()->create([
                     "ip" => $request->ip(),
-                    "fingerprint" => $request["fingerprint"],
+                    "fingerprint" => $request["rand2"],
                     "fs_id" => $item["fs_id"],
                     "urls" => $item["urls"],
                     "ua" => $item["ua"],

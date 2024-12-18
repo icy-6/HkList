@@ -180,6 +180,7 @@ class TokenController extends Controller
     {
         $validator = Validator::make($request->all(), [
             "token" => "required|string",
+            "rand2" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -191,7 +192,7 @@ class TokenController extends Controller
         if ($request["token"] === "guest") {
             $records = $records
                 ->where(function (Builder $query) use ($request) {
-                    $query->where("fingerprint", $request["fingerprint"])
+                    $query->where("fingerprint", $request["rand2"])
                         ->orWhere("ip", $request->ip());
                 })
                 ->whereDate("records.created_at", "=", now());

@@ -33,7 +33,7 @@ class RecordController extends Controller
     {
         $validator = Validator::make($request->all(), [
             "token" => "required|string",
-            "fingerprint" => "required|string",
+            "rand2" => "required|string",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -46,7 +46,7 @@ class RecordController extends Controller
 
         if ($request["token"] === "guest") {
             $recordsQuery->where(function (Builder $query) use ($request) {
-                $query->where("ip", $request->ip())->orWhere("fingerprint", $request["fingerprint"]);
+                $query->where("ip", $request->ip())->orWhere("fingerprint", $request["rand2"]);
             });
         }
 
