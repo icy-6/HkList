@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FileList;
 use App\Models\Record;
+use App\Models\Token;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -23,5 +27,34 @@ class RecordController extends Controller
             ->paginate($request["size"]);
 
         return ResponseController::success($data);
+    }
+
+    public function getHistory(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "token" => "required|string",
+            "fingerprint" => "required|string",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $token = Token::query()->firstWhere("token", $request["token"]);
+        if (!$token) return ResponseController::TokenNotExists();
+
+        $recordsQuery = Record::query()
+            ->with(["file:id,filename,size"])
+            ->where("token_id", $token["id"]);
+
+        if ($request["token"] === "guest") {
+            $recordsQuery->where(function (Builder $query) use ($request) {
+                $query->where("ip", $request->ip())->orWhere("fingerprint", $request["fingerprint"]);
+            });
+        }
+
+        $records = $recordsQuery->paginate(
+            $request["size"] ?? 5,
+            ["urls", "ua", "created_at", "fs_id"]
+        );
+
+        return ResponseController::success($records);
     }
 }

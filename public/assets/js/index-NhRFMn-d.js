@@ -1,1 +1,0 @@
-import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{C as r}from"./index-D2qLX_da.js";import{a as n,w as a,o as s,g as c}from"./index-D_e8F7w3.js";const _={};function f(d,t){const o=r;return s(),n(o,null,{default:a(()=>t[0]||(t[0]=[c("token")])),_:1})}const l=e(_,[["render",f]]);export{l as default};

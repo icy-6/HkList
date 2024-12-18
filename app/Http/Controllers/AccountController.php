@@ -11,6 +11,36 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
+    public function select(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "column" => ["nullable", "string", Rule::in(Account::$attrs)],
+            "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $data = Account::query()
+            ->withCount([
+                'records as total_count',
+                'records as today_count' => function ($query) {
+                    $query->whereDate('created_at', now());
+                }
+            ])
+            ->withSum([
+                'records as total_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id');
+                },
+                'records as today_size' => function ($query) {
+                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id')
+                        ->whereDate('records.created_at', now());
+                }
+            ], "file_lists.size")
+            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->paginate($request["size"]);
+
+        return ResponseController::success($data);
+    }
+
     private static function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
     {
         // 获取账户信息
@@ -32,7 +62,7 @@ class AccountController extends Controller
             "account_data" => [
                 $accountType => $cookieOrAccessToken,
                 "vip_type" => $vipInfoData["vip_type"],
-                "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))
+                "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s")
             ],
             "switch" => 1,
             "reason" => "",
@@ -64,7 +94,7 @@ class AccountController extends Controller
             "account_data" => [
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
-                "expires_at" => $expires_at
+                "expires_at" => $expires_at->format("Y-m-d H:i:s")
             ],
             "switch" => !$is_expired,
             "reason" => $is_expired ? "企业套餐已过期" : "",
@@ -93,7 +123,7 @@ class AccountController extends Controller
             "account_data" => [
                 "access_token" => $accessTokenData["access_token"],
                 "refresh_token" => $accessTokenData["refresh_token"],
-                "token_expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone")),
+                "token_expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s"),
                 ...$accountInfoData["account_data"]
             ],
             "switch" => 1,
@@ -286,36 +316,6 @@ class AccountController extends Controller
         return ResponseController::success([
             "have_repeat" => $have_repeat
         ]);
-    }
-
-    public function select(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            "column" => ["nullable", "string", Rule::in(Account::$attrs)],
-            "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-        $data = Account::query()
-            ->withCount([
-                'records as total_count',
-                'records as today_count' => function ($query) {
-                    $query->whereDate('created_at', Carbon::today(config("app.timezone")));
-                }
-            ])
-            ->withSum([
-                'records as total_size' => function ($query) {
-                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id');
-                },
-                'records as today_size' => function ($query) {
-                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id')
-                        ->whereDate('records.created_at', Carbon::today(config("app.timezone")));
-                }
-            ], "file_lists.size")
-            ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->paginate($request["size"]);
-
-        return ResponseController::success($data);
     }
 
     const prov = ["北京市", "天津市", "上海市", "重庆市", "河北省", "山西省", "内蒙古自治区", "辽宁省", "吉林省", "黑龙江省", "江苏省", "浙江省", "安徽省", "福建省", "江西省", "山东省", "河南省", "湖北省", "湖南省", "广东省", "广西壮族自治区", "海南省", "四川省", "贵州省", "云南省", "西藏自治区", "陕西省", "甘肃省", "青海省", "宁夏回族自治区", "新疆维吾尔自治区", "香港特别行政区", "澳门特别行政区", "台湾省"];

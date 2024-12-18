@@ -46,7 +46,8 @@ class ParseController extends Controller
             $records = Record::query()
                 ->where("token_id", $token["id"])
                 ->where(function (Builder $query) use ($request) {
-                    $query->where("fingerprint", $request["fingerprint"])->orWhere("ip", $request->ip());
+                    $query->where("fingerprint", $request["fingerprint"])
+                        ->orWhere("ip", $request->ip());
                 })
                 ->whereDate("records.created_at", "=", now())
                 ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
@@ -148,7 +149,7 @@ class ParseController extends Controller
     {
         return match ($parse_mode ?? config("hklist.parse.parse_mode")) {
             // 正常模式
-            1, 2 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
+            0, 1, 2 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
             3, 4 => ResponseController::success(["account_type" => "open_platform", "account_data" => ["vip_type" => "超级会员"]]),
             // 企业平台

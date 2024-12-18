@@ -17,14 +17,18 @@ Route::prefix("/v1")->group(function () {
     Route::post("/install", [InstallController::class, "install"]);
 
     Route::middleware(["IsInstall"])->group(function () {
-        Route::prefix("/parse")->middleware(["IdentifierFilter"])->group(function () {
-            Route::get("/config", [ParseController::class, "getConfig"]);
-            Route::get("/limit", [ParseController::class, "getLimit"]);
-            Route::middleware(["PassFilter:USER"])->group(function () {
-                Route::post("/get_file_list", [ParseController::class, "getFileList"]);
-                Route::post("/get_vcode", [ParseController::class, "getVcode"]);
-                Route::post("/get_download_links", [ParseController::class, "getDownloadLinks"]);
+        Route::prefix("/user")->middleware(["IdentifierFilter"])->group(function () {
+            Route::prefix("/parse")->group(function () {
+                Route::get("/config", [ParseController::class, "getConfig"]);
+                Route::get("/limit", [ParseController::class, "getLimit"]);
+                Route::middleware(["PassFilter:USER"])->group(function () {
+                    Route::post("/get_file_list", [ParseController::class, "getFileList"]);
+                    Route::post("/get_vcode", [ParseController::class, "getVcode"]);
+                    Route::post("/get_download_links", [ParseController::class, "getDownloadLinks"]);
+                });
             });
+            Route::get("/token", [TokenController::class, "getToken"]);
+            Route::get("/history", [RecordController::class, "getHistory"]);
         });
 
         Route::post("/admin/check_password", [CheckPasswordController::class, "checkPassword"]);
@@ -42,7 +46,6 @@ Route::prefix("/v1")->group(function () {
                 Route::get("/", [TokenController::class, "select"]);
                 Route::post("/", [TokenController::class, "insert"]);
                 Route::patch("/", [TokenController::class, "update"]);
-                Route::patch("/switch", [TokenController::class, "updateSwitch"]);
                 Route::delete("/", [TokenController::class, "delete"]);
             });
 

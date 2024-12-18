@@ -9,33 +9,6 @@ use Illuminate\Validation\Rule;
 
 class BlackListController extends Controller
 {
-    public function insert(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            "type" => ["required", Rule::in("ip", "fingerprint")],
-            "identifier" => "required|string",
-            "reason" => "required|string",
-            "ban_days" => "required|numeric"
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-        $blackList = BlackList::query()->firstWhere([
-            "type" => $request["type"],
-            "identifier" => $request["identifier"],
-        ]);
-
-        if ($blackList) return ResponseController::blackListExists();
-
-        BlackList::query()->create([
-            "type" => $request["type"],
-            "identifier" => $request["identifier"],
-            "reason" => $request["reason"],
-            "expires_at" => now()->addDays($request["ban_days"])
-        ]);
-
-        return ResponseController::success();
-    }
-
     public function select(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -49,6 +22,34 @@ class BlackListController extends Controller
             ->paginate($request["size"]);
 
         return ResponseController::success($data);
+    }
+
+    public function insert(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "type" => ["required", Rule::in("ip", "fingerprint")],
+            "identifier" => "required|string",
+            "reason" => "required|string|ip",
+            "ban_days" => "required|numeric"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $blackList = BlackList::query()->firstWhere([
+            "type" => $request["type"],
+            "identifier" => $request["identifier"],
+        ]);
+        if ($blackList) return ResponseController::blackListExists();
+
+        if ($request["type"] == "ip" && !filter_var($request["identifier"], FILTER_VALIDATE_IP)) return ResponseController::paramsError(["errors" => ["identifier" => "Field identifier must be a valid IP address when type is IP."]]);
+
+        BlackList::query()->create([
+            "type" => $request["type"],
+            "identifier" => $request["identifier"],
+            "reason" => $request["reason"],
+            "expires_at" => now()->addDays($request["ban_days"])
+        ]);
+
+        return ResponseController::success();
     }
 
     public function update(Request $request)
@@ -67,8 +68,11 @@ class BlackListController extends Controller
             "reason" => $request["reason"],
             "expires_at" => $request["expires_at"]
         ];
-        if (isset($request["type"])) $update["type"] = $request["type"];
-        if (isset($request["identifier"])) $update["identifier"] = $request["identifier"];
+
+        if (count($request["id"]) < 1) {
+            if (isset($request["type"])) $update["type"] = $request["type"];
+            if (isset($request["identifier"])) $update["identifier"] = $request["identifier"];
+        }
 
         $count = BlackList::query()
             ->whereIn("id", $request["id"])

@@ -105,7 +105,7 @@ class ResponseController extends Controller
 
     public static function deleteFailed()
     {
-        return self::response(20017, 400, "删除失败,请检查参数");
+        return self::response(20017, 400, "删除成功,但部分可能删除失败");
     }
 
     public static function updateFailed()
@@ -120,22 +120,22 @@ class ResponseController extends Controller
 
     public static function TokenNotExists()
     {
-        return self::response(20019, 400, "token不存在");
+        return self::response(20019, 400, "卡密不存在");
     }
 
     public static function TokenIpHitMax()
     {
-        return self::response(20020, 400, "token的可用ip数已到达限制");
+        return self::response(20020, 400, "卡密的可用ip数已到达限制");
     }
 
     public static function TokenExpired()
     {
-        return self::response(20021, 400, "token已过期");
+        return self::response(20021, 400, "卡密已到期");
     }
 
     public static function TokenQuotaHasBeenUsedUp()
     {
-        return self::response(20022, 400, "token可用容量已用完");
+        return self::response(20022, 400, "卡密可用容量已用完");
     }
 
     public static function parserServerNotDefined()
@@ -218,18 +218,18 @@ class ResponseController extends Controller
         return self::response(20037, 500, "获取模板变量失败,errno: $errno");
     }
 
-    public static function tableExists($table)
+    public static function canNotChangeGuestToken($message)
     {
-        return self::response(20038, 500, "表 $table 已存在");
-    }
-
-    public static function canNotChangeGuestToken()
-    {
-        return self::response(20039, 400, "不能修改游客的卡密");
+        return self::response(20038, 400, $message);
     }
 
     public static function tokenHasBeenBaned($reason)
     {
-        return self::response(20040, 400, "卡密已被封禁, 原因: $reason");
+        return self::response(20039, 400, "卡密已被封禁, 原因: $reason");
+    }
+
+    public static function TokenExists()
+    {
+        return self::response(20040, 400, "卡密已存在");
     }
 }
