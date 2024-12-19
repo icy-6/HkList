@@ -179,8 +179,7 @@ class TokenController extends Controller
     public function getToken(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            "token" => "required|string",
-            "rand2" => "required|string"
+            "token" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 

@@ -22,3 +22,4 @@ yarn-error.log
 /.zed
 
 app/Http/Controllers/Parsers
+app/Http/Middleware/CheckRandOrigin.php

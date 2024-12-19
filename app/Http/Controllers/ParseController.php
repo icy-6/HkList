@@ -42,11 +42,6 @@ class ParseController extends Controller
 
         // 判断游客
         if ($request["token"] === "guest") {
-            $validator = Validator::make($request->all(), [
-                "rand2" => "required|string",
-            ]);
-            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
             // 绑定指纹,每日刷新
             $records = Record::query()
                 ->where("token_id", $token["id"])
@@ -299,8 +294,7 @@ class ParseController extends Controller
             "surl" => "required|string",
             "dir" => "required|string",
             "pwd" => "nullable|string",
-            "token" => "required|string",
-            "rand2" => "required|string"
+            "token" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 

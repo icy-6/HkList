@@ -13,7 +13,7 @@ use App\Http\Controllers\RecordController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix("/v1")->group(function () {
+Route::prefix("/v1")->middleware(["CheckRand"])->group(function () {
     Route::post("/install", [InstallController::class, "install"]);
 
     Route::middleware(["IsInstall"])->group(function () {

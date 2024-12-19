@@ -32,8 +32,7 @@ class RecordController extends Controller
     public function getHistory(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            "token" => "required|string",
-            "rand2" => "required|string",
+            "token" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 

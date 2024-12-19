@@ -23,9 +23,6 @@ class IdentifierFilter
             $ip = BlackList::query()->firstWhere(["type" => "ip", "identifier" => $request->ip()]);
             if ($ip) return ResponseController::inBlackList();
 
-            $validator = Validator::make($request->all(), ["rand2" => "required|string"]);
-            if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
             $fingerprint = BlackList::query()->firstWhere(["type" => "fingerprint", "identifier" => $request["rand2"]]);
             if ($fingerprint) return ResponseController::inBlackList();
         }
