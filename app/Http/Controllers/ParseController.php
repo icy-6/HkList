@@ -37,6 +37,7 @@ class ParseController extends Controller
 
         $token = Token::query()->firstWhere("token", $request["token"]);
         if (!$token) return ResponseController::TokenNotExists();
+        $token = $token->toArray();
 
         if (!$token["switch"]) return ResponseController::tokenHasBeenBaned($token["reason"]);
 
@@ -50,7 +51,7 @@ class ParseController extends Controller
                         ->orWhere("ip", $request->ip());
                 })
                 ->whereDate("records.created_at", "=", now())
-                ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
+                ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
                 ->selectRaw("SUM(size) as size,COUNT(*) as count")
                 ->first();
 
@@ -75,7 +76,7 @@ class ParseController extends Controller
 
             $records = Record::query()
                 ->where("token_id", $token["id"])
-                ->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
+                ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
                 ->selectRaw("SUM(size) as size,COUNT(*) as count")
                 ->first();
 
@@ -336,7 +337,8 @@ class ParseController extends Controller
         if ($fileList->sum("size") > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
 
         $response = match (config("hklist.parse.parse_mode")) {
-            0 => V0Controller::request($request)
+            0 => V0Controller::request($request),
+            default => ResponseController::unknownParseMode()
         };
         $responseData = $response->getData(true);
         if ($responseData["code"] !== 200) return $response;
@@ -372,11 +374,16 @@ class ParseController extends Controller
             if ($isLimit) {
                 $item["message"] = "下载链接已限速,推荐重新解析";
             } else {
+                $fs_id = FileList::query()->firstWhere([
+                    "surl" => $request["surl"],
+                    "pwd" => $request["pwd"],
+                    "fs_id" => $item["fs_id"]
+                ]);
                 // 插入记录
                 Record::query()->create([
                     "ip" => $request->ip(),
                     "fingerprint" => $request["rand2"],
-                    "fs_id" => $item["fs_id"],
+                    "fs_id" => $fs_id["id"],
                     "urls" => $item["urls"],
                     "ua" => $item["ua"],
                     "token_id" => $token["id"],

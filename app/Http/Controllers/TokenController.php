@@ -196,7 +196,7 @@ class TokenController extends Controller
                 })
                 ->whereDate("records.created_at", "=", now());
         }
-        $records = $records->leftJoin("file_lists", "file_lists.fs_id", "=", "records.fs_id")
+        $records = $records->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
             ->first();
 

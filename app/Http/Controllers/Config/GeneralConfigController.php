@@ -34,8 +34,8 @@ class GeneralConfigController extends Controller
             "HKLIST_ADMIN_PASSWORD" => $request["new_admin_password"] ?? "",
             "HKLIST_PARSE_PASSWORD" => $request["parse_password"] ?? "",
             "HKLIST_SHOW_ANNOUNCE" => $request["show_announce"],
-            "HKLIST_ANNOUNCE" => $request["announce"] ?? "",
-            "HKLIST_CUSTOM_BUTTON" => $request["custom_button"] ?? "",
+            "HKLIST_ANNOUNCE" => htmlspecialchars(str_replace("\n", "[NextLine]", $request["announce"]), ENT_QUOTES) ?? "",
+            "HKLIST_CUSTOM_BUTTON" => str_replace("\n", "[NextLine]", $request["custom_button"]) ?? "",
             "APP_NAME" => $request["name"],
             "APP_LOGO" => $request["logo"],
             "APP_DEBUG" => $request["debug"]
