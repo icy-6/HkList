@@ -1,66 +1,65 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# HkList-laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+![Laravel Logo](https://raw.githubusercontent.com/jonacruz89/SAWARATSUKI.ServiceLogos/main/Laravel/Laravel.png)
 
-## About Laravel
+## 提前声明
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+项目所涉及的接口均为官方开放接口，需使用正版 SVIP 会员账号进行代理提取高速链接，无破坏官方接口行为，本身不存在违法。
+仅供自己参考学习使用。诺违规使用官方会限制或封禁你的账号，包括你的 IP，如无官方授权进行商业用途会对你造成更严重后果。
+源码仅供学习，如无视声明使用产生正负面结果(限速，被封等)都与作者无关。
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 赞助开发
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 
-## Learning Laravel
+## 安装方法
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 程序需求
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- Mysql >= 5.7
+- PHP >= 8.2
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 注意
 
-## Laravel Sponsors
+默认解析和后台密码都是 `admin`
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+新版本需要授权使用, 购买联系 [tg](https://t.me/huan_kong)
 
-### Premium Partners
+接代安装
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### 普通安装（宝塔）
 
-## Contributing
+- 1.解压 `vendor.zip`
+- 2.设置运行目录为 `/public`
+- 3.设置伪静态为 `laravel5`
+- 4.复制 `.env.example` 并重命名为 `.env`
+- 5.访问页面安装
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### `docker` 安装
 
-## Code of Conduct
+- 1.获取 [镜像](https://hub.docker.com/r/huankong233/HkList)
+- 2.启动项目
+- 3.所有值可以通过修改 `.env` 文件 或者通过修改 `系统变量` 来定义
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## 相关仓库
 
-## Security Vulnerabilities
+### 前台
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+[HKlist-frontend](https://github.com/huankong233/HkList-frontend)
 
-## License
+### 后台
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+[HKlist](https://github.com/huankong233/HkList)
+
+## 感谢
+
+### 项目
+
+- [laravel](https://laravel.com)
+- [94list](https://github.com/codehub666/94list)
+- [独角发卡](https://github.com/assimon/dujiaoka)
+- [baiduwp-php](https://github.com/yuantuo666/baiduwp-php)
+
+### 贡献者
+
+![contribs](https://contrib.rocks/image?repo=huankong233/HkList)
