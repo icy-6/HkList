@@ -49,7 +49,7 @@ class RecordController extends Controller
             });
         }
 
-        $records = $recordsQuery->paginate(
+        $records = $recordsQuery->orderBy("id", "desc")->paginate(
             $request["size"] ?? 5,
             ["urls", "ua", "created_at", "fs_id"]
         );

@@ -176,7 +176,7 @@ class ParseController extends Controller
             $provData = $provData["data"];
 
             if ($limit_cn && !$provData["isCn"]) return ResponseController::unsupportedCountry();
-            $province = $provData["province"];
+            if ($limit_prov) $province = $provData["province"];
         }
 
         $accountType = self::getAccountType($lessThan100M ? "exploit" : null);
@@ -187,7 +187,13 @@ class ParseController extends Controller
         // 解析模式需要超级会员
         $needPro = false;
         $account = Account::query()->where(["switch" => true, "account_type" => $accountTypeData["account_type"]]);
-        if (!$makeNew && $province !== null) $account = $account->where("prov", $province);
+        if ($province !== null) {
+            if ($makeNew) {
+                $account = $account->whereNull("prov");
+            } else {
+                $account = $account->where("prov", $province);
+            }
+        }
         foreach ($accountTypeData["account_data"] as $key => $value) {
             if ($key === "vip_type" && $value === "超级会员") $needPro = true;
             $account = $account->where("account_data->" . $key, $value);

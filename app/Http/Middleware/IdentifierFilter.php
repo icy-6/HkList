@@ -21,10 +21,10 @@ class IdentifierFilter
         // debug 时不校验
         if (!config("app.debug")) {
             $ip = BlackList::query()->firstWhere(["type" => "ip", "identifier" => $request->ip()]);
-            if ($ip) return ResponseController::inBlackList();
+            if ($ip) return ResponseController::inBlackList($ip["reason"]);
 
             $fingerprint = BlackList::query()->firstWhere(["type" => "fingerprint", "identifier" => $request["rand2"]]);
-            if ($fingerprint) return ResponseController::inBlackList();
+            if ($fingerprint) return ResponseController::inBlackList($fingerprint["reason"]);
         }
 
         return $next($request);

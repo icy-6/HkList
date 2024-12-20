@@ -88,9 +88,9 @@ class ResponseController extends Controller
         return self::response(20013, 500, "获取验证码图片信息失败,errno: $errno");
     }
 
-    public static function inBlackList()
+    public static function inBlackList($reason)
     {
-        return self::response(20014, 400, "处于黑名单中");
+        return self::response(20014, 400, "处于黑名单中,原因: $reason");
     }
 
     public static function installFailed($message)

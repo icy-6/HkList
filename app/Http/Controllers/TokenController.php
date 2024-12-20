@@ -185,6 +185,9 @@ class TokenController extends Controller
 
         $token = Token::query()->firstWhere("token", $request["token"]);
         if (!$token) return ResponseController::TokenNotExists();
+
+        if (!$token["switch"]) return ResponseController::tokenHasBeenBaned($token["reason"]);
+
         $token = $token->toArray();
 
         $records = Record::query()->where("token_id", $token["id"]);

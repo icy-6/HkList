@@ -29,7 +29,7 @@ class BlackListController extends Controller
         $validator = Validator::make($request->all(), [
             "type" => ["required", Rule::in("ip", "fingerprint")],
             "identifier" => "required|string",
-            "reason" => "required|string|ip",
+            "reason" => "required|string",
             "ban_days" => "required|numeric"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
