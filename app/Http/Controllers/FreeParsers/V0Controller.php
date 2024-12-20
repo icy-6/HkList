@@ -80,7 +80,7 @@ class V0Controller extends Controller
                 );
             } else {
                 // 请求成功 则 赋值 urls
-                $url["urls"] = $dlinkData["data"]["urls"];
+                $url["urls"] = array_map(fn($url) => $url . "&origin=dlna", $dlinkData["data"]["urls"]);
             }
 
             $urls[] = $url;
