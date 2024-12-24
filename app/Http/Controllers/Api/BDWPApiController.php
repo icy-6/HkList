@@ -577,7 +577,8 @@ class BDWPApiController extends Controller
         $response = $data["data"];
         if (
             !isset($response["errno"]) ||
-            !isset($response["result"])
+            !isset($response["result"]) ||
+            $response["errno"] !== 0
         ) {
             return ResponseController::getTemplateVariableFailed($response["errno"]);
         }
