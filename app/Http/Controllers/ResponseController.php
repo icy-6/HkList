@@ -242,4 +242,49 @@ class ResponseController extends Controller
     {
         return self::response(20042, 400, "授权已过期");
     }
+
+    public static function getUinfoFailed($errno)
+    {
+        return self::response(20043, 400, "获取Uinfo失败, errno: $errno");
+    }
+
+    public static function getQuoteFailed($errno)
+    {
+        return self::response(20044, 400, "获取配额失败, errno: $errno");
+    }
+
+    public static function deleteFolderFailed($errno, $errmsg)
+    {
+        return self::response(20045, 400, "删除文件夹失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function createFolderFailed($errno, $errmsg)
+    {
+        return self::response(20046, 400, "创建文件夹失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function getFolderFailed($errno, $errmsg)
+    {
+        return self::response(20047, 400, "获取文件夹失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function transferFileFailed($errno, $errmsg)
+    {
+        return self::response(20048, 400, "转存文件失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function getDlinkFailed($errno)
+    {
+        return self::response(20049, 400, "获取Dlink失败, errno: $errno");
+    }
+
+    public static function getTolConfigFailed($errno, $errmsg)
+    {
+        return self::response(20050, 400, "获取tplconfig失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function getRealLinkFailed($errno, $errmsg)
+    {
+        return self::response(20051, 400, "获取下载链接失败, errno: $errno, errmsg: $errmsg");
+    }
 }

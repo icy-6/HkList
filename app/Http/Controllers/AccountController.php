@@ -145,10 +145,15 @@ class AccountController extends Controller
         if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
         $enterpriseInfoData = $enterpriseInfoData["data"];
 
-        $templateVariableInfo = BDWPApiController::getTemplateVariable($save_cookie);
-        $templateVariableInfoData = $templateVariableInfo->getData(true);
-        if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
-        $templateVariableInfoData = $templateVariableInfoData["data"];
+        $saveTemplateVariableInfo = BDWPApiController::getTemplateVariable($save_cookie);
+        $saveTemplateVariableInfoData = $saveTemplateVariableInfo->getData(true);
+        if ($saveTemplateVariableInfoData["code"] !== 200) return $saveTemplateVariableInfo;
+        $saveTemplateVariableInfoData = $saveTemplateVariableInfoData["data"];
+
+        $downloadTemplateVariableInfo = BDWPApiController::getTemplateVariable($download_cookie);
+        $downloadTemplateVariableInfoData = $downloadTemplateVariableInfo->getData(true);
+        if ($downloadTemplateVariableInfoData["code"] !== 200) return $downloadTemplateVariableInfo;
+        $downloadTemplateVariableInfoData = $downloadTemplateVariableInfoData["data"];
 
         $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
         $downloadAccountInfoData = $downloadAccountInfo->getData(true);
@@ -168,10 +173,11 @@ class AccountController extends Controller
                 "surl" => $surl,
                 "pwd" => $pwd,
                 "dir" => $dir,
-                "save_cookie" => $save_cookie,
                 "cid" => $enterpriseInfoData["cid"],
-                "bdstoken" => $templateVariableInfoData["bdstoken"],
-                "download_cookie" => $download_cookie
+                "save_cookie" => $save_cookie,
+                "save_bdstoken" => $saveTemplateVariableInfoData["bdstoken"],
+                "download_cookie" => $download_cookie,
+                "download_bdstoken" => $downloadTemplateVariableInfoData["bdstoken"],
             ],
             "switch" => 1,
             "reason" => "",

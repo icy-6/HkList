@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
@@ -165,4 +166,20 @@ class UtilsController extends Controller
     }
 
     public static int $GB = 1073741824;
+
+    public static function banAccount($actionName, $message, $id)
+    {
+        Account::query()
+            ->find($id)
+            ->update([
+                "switch" => false,
+                "reason" => $message,
+                "last_use_at" => now()
+            ]);
+        UtilsController::sendMail(
+            $actionName,
+            "$message,账号ID: $id",
+            "$message"
+        );
+    }
 }
