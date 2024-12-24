@@ -55,14 +55,6 @@ class UtilsController extends Controller
         }
     }
 
-    public static function decodeSecKey($seckey)
-    {
-        $seckey = str_replace("-", "+", $seckey);
-        $seckey = str_replace("~", "=", $seckey);
-        $seckey = str_replace("_", "/", $seckey);
-        return ResponseController::success(["seckey" => $seckey]);
-    }
-
     // 省份标准名称映射表
     const provinces = [
         "北京" => "北京市",
@@ -101,14 +93,12 @@ class UtilsController extends Controller
         "台湾" => "台湾省"
     ];
 
-    private static ?XdbSearcher $ip2region = null;
-
     public static function getProvinces($ip)
     {
-        if (!self::$ip2region) self::$ip2region = new XdbSearcher();
 
         try {
-            $result = self::$ip2region->search($ip);
+            $ip2region = new XdbSearcher();
+            $result = $ip2region->search($ip);
             if (!$result) return ResponseController::getProvFailed($ip);
         } catch (Exception $exception) {
             return ResponseController::getProvFailed($ip);
@@ -174,29 +164,5 @@ class UtilsController extends Controller
         return ResponseController::success();
     }
 
-    public static function getVersionString($env_arr)
-    {
-        $version = $env_arr->filter(fn($env, $key) => $key === "_94LIST_VERSION")->first() ?? "0.0.0";
-        return ResponseController::success(["version" => $version]);
-    }
-
-    public static function getEnvFile($env_path)
-    {
-        $data = collect(explode("\n", File::get($env_path)))
-            ->filter(fn($line) => $line)
-            ->map(fn($line) => explode("=", $line))
-            ->mapWithKeys(fn($item) => [$item[0] => $item[1] ?? ""]);
-        return ResponseController::success($data);
-    }
-
     public static int $GB = 1073741824;
-
-    public static function getBDUSS($cookie)
-    {
-        preg_match('/BDUSS=([^;]*)/i', $cookie, $matches);
-        $BDUSS = $matches[0] ?? "";
-        preg_match('/STOKEN=([^;]*)/i', $cookie, $matches);
-        $STOKEN = $matches[0] ?? "";
-        return $BDUSS . "; " . $STOKEN . ";";
-    }
 }

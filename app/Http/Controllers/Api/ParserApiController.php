@@ -10,7 +10,6 @@ class ParserApiController extends Controller
 {
     /**
      * {
-     *     "valid": true,
      *     "expires_at": "2025-09-10 23:59:59"
      * }
      */
@@ -18,7 +17,7 @@ class ParserApiController extends Controller
     {
         $res = UtilsController::sendRequest(
             "ParserApiController::getAuthInfo",
-            "get",
+            "post",
             "$parser_server/api/test_auth",
             ["json" => ["token" => $parser_password]]
         );

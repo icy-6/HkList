@@ -232,4 +232,14 @@ class ResponseController extends Controller
     {
         return self::response(20040, 400, "卡密已存在");
     }
+
+    public static function domainError()
+    {
+        return self::response(20041, 400, "域名校验不通过");
+    }
+
+    public static function authExpired()
+    {
+        return self::response(20042, 400, "授权已过期");
+    }
 }

@@ -11,6 +11,7 @@ return [
         "show_announce" => (bool)env("HKLIST_SHOW_ANNOUNCE", true),
         "announce" => htmlspecialchars_decode(str_replace("[NextLine]", "\n", env("HKLIST_ANNOUNCE", ""))),
         "custom_button" => str_replace("[NextLine]", "\n", env("HKLIST_CUSTOM_BUTTON", "")),
+        "show_hero" => (bool)env("HKLIST_SHOW_HERO", false),
         "name" => env("APP_NAME", "HkList"),
         "logo" => env("APP_LOGO", "/favicon.ico"),
         'debug' => env("APP_DEBUG", false),

@@ -274,6 +274,14 @@ class BDWPApiController extends Controller
         return ResponseController::success($antiData["anti"]);
     }
 
+    public static function decodeSecKey($seckey)
+    {
+        $seckey = str_replace("-", "+", $seckey);
+        $seckey = str_replace("~", "=", $seckey);
+        $seckey = str_replace("_", "/", $seckey);
+        return ResponseController::success(["seckey" => $seckey]);
+    }
+
     /**
      * {
      *     "uk": 114514,
@@ -368,7 +376,7 @@ class BDWPApiController extends Controller
             return ResponseController::getFileListFailed($errno, $errtype);
         }
 
-        $seckey = UtilsController::decodeSecKey($response["data"]["seckey"]);
+        $seckey = self::decodeSecKey($response["data"]["seckey"]);
         $seckeyData = $seckey->getData(true);
         if ($seckeyData["code"] !== 200) return $seckey;
 

@@ -190,18 +190,20 @@ class TokenController extends Controller
 
         $token = $token->toArray();
 
-        $records = Record::query()->where("token_id", $token["id"]);
+        $recordsQuery = Record::query()->where("token_id", $token["id"]);
         if ($request["token"] === "guest") {
-            $records = $records
+            $recordsQuery
                 ->where(function (Builder $query) use ($request) {
                     $query->where("fingerprint", $request["rand2"])
                         ->orWhere("ip", $request->ip());
                 })
                 ->whereDate("records.created_at", "=", now());
         }
-        $records = $records->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
+        $records = $recordsQuery->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
             ->first();
+
+        $firstRecord = Record::query()->where("token_id", $token["id"])->get("created_at")->first()->toArray();
 
         return ResponseController::success([
             "token" => $token["token"],
@@ -210,7 +212,7 @@ class TokenController extends Controller
             "remaining_count" => $token["count"] - $records["count"],
             "remaining_size" => $token["size"] - $records["size"],
             "ip" => $token["ip"],
-            "created_at" => $token["created_at"],
+            "used_at" => $firstRecord ? $firstRecord["created_at"] : null,
             "expires_at" => $token["expires_at"],
         ]);
     }

@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\BDWPApiController;
 use App\Http\Controllers\FreeParsers\V0Controller;
+use App\Http\Controllers\Parsers\V1Controller;
+use App\Http\Controllers\Parsers\V2Controller;
+use App\Http\Controllers\Parsers\V3Controller;
+use App\Http\Controllers\Parsers\V4Controller;
+use App\Http\Controllers\Parsers\V5Controller;
+use App\Http\Controllers\Parsers\V6Controller;
 use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Record;
@@ -21,7 +27,7 @@ class ParseController extends Controller
     {
         $config = config("hklist");
         return ResponseController::success([
-            ...collect($config["general"])->only(["debug", "show_announce", "announce", "custom_button", "name", "logo"]),
+            ...collect($config["general"])->only(["debug", "show_announce", "announce", "custom_button", "name", "logo", "show_hero"]),
             ...collect($config["limit"])->only(["max_once", "min_single_filesize", "max_single_filesize"]),
             "need_password" => $config["general"]["parse_password"] !== "",
             "have_account" => self::getRandomCookie($request)->getData(true)["code"] === 200,
@@ -37,62 +43,46 @@ class ParseController extends Controller
 
         $token = Token::query()->firstWhere("token", $request["token"]);
         if (!$token) return ResponseController::TokenNotExists();
-        $token = $token->toArray();
+        $tokenArray = $token->toArray();
 
         if (!$token["switch"]) return ResponseController::tokenHasBeenBaned($token["reason"]);
+
+        $recordsQuery = Record::query()->where("token_id", $token["id"]);
 
         // 判断游客
         if ($request["token"] === "guest") {
             // 绑定指纹,每日刷新
-            $records = Record::query()
-                ->where("token_id", $token["id"])
+            $recordsQuery
                 ->where(function (Builder $query) use ($request) {
                     $query->where("fingerprint", $request["rand2"])
                         ->orWhere("ip", $request->ip());
                 })
-                ->whereDate("records.created_at", "=", now())
-                ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
-                ->selectRaw("SUM(size) as size,COUNT(*) as count")
-                ->first();
-
-            if (
-                $records["count"] >= $token["count"] ||
-                $records["size"] >= $token["size"]
-            ) {
-                return ResponseController::TokenQuotaHasBeenUsedUp();
-            }
-
-            return ResponseController::success([
-                "count" => $token["count"] - $records["count"],
-                "size" => $token["size"] - $records["size"],
-                "expires_at" => $token["expires_at"]
-            ]);
+                ->whereDate("records.created_at", "=", now());
         } else {
             // 非游客
             if (!in_array($request->ip(), $token["ip"]) && count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
 
             // 检查是否已经过期
             if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
-
-            $records = Record::query()
-                ->where("token_id", $token["id"])
-                ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
-                ->selectRaw("SUM(size) as size,COUNT(*) as count")
-                ->first();
-
-            if (
-                $records["count"] >= $token["count"] ||
-                $records["size"] >= $token["size"]
-            ) {
-                return ResponseController::TokenQuotaHasBeenUsedUp();
-            }
-
-            return ResponseController::success([
-                "count" => $token["count"] - $records["count"],
-                "size" => $token["size"] - $records["size"],
-                "expires_at" => $token["expires_at"] ?? "未使用"
-            ]);
         }
+
+        $records = $recordsQuery
+            ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
+            ->selectRaw("SUM(size) as size,COUNT(*) as count")
+            ->first();
+
+        if (
+            $records["count"] >= $token["count"] ||
+            $records["size"] >= $token["size"]
+        ) {
+            return ResponseController::TokenQuotaHasBeenUsedUp();
+        }
+
+        return ResponseController::success([
+            "count" => $token["count"] - $records["count"],
+            "size" => $token["size"] - $records["size"],
+            "expires_at" => $tokenArray["expires_at"]
+        ]);
     }
 
     public function getFileList(Request $request)
@@ -344,6 +334,12 @@ class ParseController extends Controller
 
         $response = match (config("hklist.parse.parse_mode")) {
             0 => V0Controller::request($request),
+            1 => V1Controller::request($request),
+            2 => V2Controller::request($request),
+            3 => V3Controller::request($request),
+            4 => V4Controller::request($request),
+            5 => V5Controller::request($request),
+            6 => V6Controller::request($request),
             default => ResponseController::unknownParseMode()
         };
         $responseData = $response->getData(true);
