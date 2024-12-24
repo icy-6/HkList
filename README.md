@@ -17,7 +17,7 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 ### 程序需求
 
 - Mysql >= 5.7
-- PHP >= 8.2
+- PHP = 8.2
 
 ### 注意
 
@@ -25,31 +25,24 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 
 新版本需要授权使用, 购买联系 [tg](https://t.me/huan_kong)
 
-接代安装
-
 ### 普通安装（宝塔）
 
 - 1.解压 `vendor.zip`
 - 2.设置运行目录为 `/public`
 - 3.设置伪静态为 `laravel5`
 - 4.复制 `.env.example` 并重命名为 `.env`
-- 5.访问页面安装
-
-### `docker` 安装
-
-- 1.获取 [镜像](https://hub.docker.com/r/huankong233/HkList)
-- 2.启动项目
-- 3.所有值可以通过修改 `.env` 文件 或者通过修改 `系统变量` 来定义
+- 5.在软件商店内打开 `php` 并在安装扩展中安装 `sg15` 加密组件
+- 6.访问页面安装
 
 ## 相关仓库
 
 ### 前台
 
-[HKlist-frontend](https://github.com/huankong233/HkList-frontend)
+[HKList-frontend](https://github.com/huankong233/HkList-frontend)
 
 ### 后台
 
-[HKlist](https://github.com/huankong233/HkList)
+[HKList](https://github.com/huankong233/HkList)
 
 ## 感谢
 

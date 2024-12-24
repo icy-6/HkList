@@ -215,7 +215,7 @@ class BDWPApiController extends Controller
         $enterpriseInfoData = $enterpriseInfo["data"][0];
         return ResponseController::success([
             "cid" => $enterpriseInfoData["cid"],
-            "expires_at" => $enterpriseInfoData["product_endtime"],
+            "expires_at" => $enterpriseInfoData["orgInfo"]["product_endtime"],
         ]);
     }
 
@@ -272,6 +272,14 @@ class BDWPApiController extends Controller
         }
 
         return ResponseController::success($antiData["anti"]);
+    }
+
+    public static function decodeSecKey($seckey)
+    {
+        $seckey = str_replace("-", "+", $seckey);
+        $seckey = str_replace("~", "=", $seckey);
+        $seckey = str_replace("_", "/", $seckey);
+        return ResponseController::success(["seckey" => $seckey]);
     }
 
     /**
@@ -368,7 +376,7 @@ class BDWPApiController extends Controller
             return ResponseController::getFileListFailed($errno, $errtype);
         }
 
-        $seckey = UtilsController::decodeSecKey($response["data"]["seckey"]);
+        $seckey = self::decodeSecKey($response["data"]["seckey"]);
         $seckeyData = $seckey->getData(true);
         if ($seckeyData["code"] !== 200) return $seckey;
 
@@ -553,12 +561,12 @@ class BDWPApiController extends Controller
                     "Cookie" => $cookie
                 ],
                 "query" => [
-                    "fields" => [
+                    "fields" => JSON::encode([
                         "bdstoken",
                         "sign1",
                         "sign2",
                         "sign3"
-                    ]
+                    ])
                 ]
             ]
         );

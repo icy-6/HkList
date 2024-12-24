@@ -23,6 +23,7 @@ class GeneralConfigController extends Controller
             "show_announce" => "required|boolean",
             "announce" => "nullable|string",
             "custom_button" => "nullable|string",
+            "show_hero" => "required|boolean",
             "name" => "required|string",
             "logo" => "required|string",
             "debug" => "required|boolean",
@@ -36,6 +37,7 @@ class GeneralConfigController extends Controller
             "HKLIST_SHOW_ANNOUNCE" => $request["show_announce"],
             "HKLIST_ANNOUNCE" => htmlspecialchars(str_replace("\n", "[NextLine]", $request["announce"]), ENT_QUOTES) ?? "",
             "HKLIST_CUSTOM_BUTTON" => str_replace("\n", "[NextLine]", $request["custom_button"]) ?? "",
+            "HKLIST_SHOW_HERO" => $request["show_hero"],
             "APP_NAME" => $request["name"],
             "APP_LOGO" => $request["logo"],
             "APP_DEBUG" => $request["debug"]

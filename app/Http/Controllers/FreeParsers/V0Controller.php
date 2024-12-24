@@ -7,8 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ParseController;
 use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\UtilsController;
-use App\Models\Account;
-use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\Request;
 
 class V0Controller extends Controller
@@ -32,15 +30,10 @@ class V0Controller extends Controller
         $saveToDiskData = $saveToDisk->getData(true);
         if ($saveToDiskData["code"] !== 200) {
             if (!str_contains($saveToDiskData["message"], "errno: 2")) {
-                Account::query()->find($account["id"])->update([
-                    "switch" => false,
-                    "reason" => $saveToDiskData["message"],
-                    "last_use_at" => now()
-                ]);
-                UtilsController::sendMail(
+                UtilsController::banAccount(
                     "V0Controller::saveToDisk",
-                    "解析失败,账号ID:" . Json::encode([$account["id"]]),
-                    "解析失败"
+                    $saveToDiskData["message"],
+                    $account["id"]
                 );
             }
             return $saveToDisk;
@@ -66,17 +59,10 @@ class V0Controller extends Controller
             ];
 
             if ($dlinkData["code"] !== 200) {
-                Account::query()
-                    ->find($account["id"])
-                    ->update([
-                        "switch" => false,
-                        "reason" => $dlinkData["message"],
-                        "last_use_at" => now()
-                    ]);
-                UtilsController::sendMail(
+                UtilsController::banAccount(
                     "V0Controller::downloadByDisk",
-                    "解析失败,账号ID:" . Json::encode([$account["id"]]),
-                    "解析失败"
+                    $dlinkData["message"],
+                    $account["id"]
                 );
             } else {
                 // 请求成功 则 赋值 urls

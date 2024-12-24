@@ -28,6 +28,8 @@ class ParseConfigController extends Controller
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        if (str_ends_with($request["parser_server"], "/")) $request["parser_server"] = substr($request["parser_server"], 0, -1);
+
         UtilsController::updateEnv([
             "HKLIST_PARSER_SERVER" => $request["parser_server"] ?? "",
             "HKLIST_PARSER_PASSWORD" => $request["parser_password"] ?? "",
@@ -43,6 +45,12 @@ class ParseConfigController extends Controller
     {
         $parse = config("hklist.parse");
         if ($parse["parser_server"] === "" || $parse["parser_password"] === "") return ResponseController::parserServerNotDefined();
-        return ParserApiController::getAuthInfo($parse["parser_server"], $parse["parser_password"]);
+        $res = ParserApiController::getAuthInfo($parse["parser_server"], $parse["parser_password"]);
+        $resData = $res->getData(true);
+        if ($resData["code"] !== 200) {
+            if ($resData["data"]) return ResponseController::response($resData["data"]["code"], 400, $resData["data"]["message"]);
+            else return $res;
+        }
+        return ResponseController::success(["expires_at" => $resData["data"]["data"]["expires_at"]]);
     }
 }

@@ -51,7 +51,7 @@ class RecordController extends Controller
 
         $records = $recordsQuery->orderBy("id", "desc")->paginate(
             $request["size"] ?? 5,
-            ["urls", "ua", "created_at", "fs_id"]
+            ["id", "urls", "ua", "created_at", "fs_id"]
         );
 
         return ResponseController::success($records);
