@@ -1,5 +1,5 @@
 # 依赖构建
-FROM composer
+FROM composer AS composer
 
 COPY .env.example .env
 
@@ -41,7 +41,8 @@ COPY .docker/default.conf /etc/nginx/conf.d/default.conf
 COPY .docker/entrypoint.sh /entrypoint.sh
 
 # 复制构建后项目源码
-COPY --from=composer /app /var/www/html
+RUN rm -rf /var/www/html
+COPY --from=composer /app /var/www/HkList
 
 # 赋权
 RUN chmod a+x /entrypoint.sh
