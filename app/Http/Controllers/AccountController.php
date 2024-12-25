@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\BDWPApiController;
+use App\Http\Controllers\Parsers\ApiController;
 use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -163,7 +164,7 @@ class AccountController extends Controller
         // 检查链接是否有效
         $fileList = BDWPApiController::getFileList($surl, $pwd, $dir);
         $fileListData = $fileList->getData(true);
-        if ($fileListData["code"] !== 200) return $fileListData;
+        if ($fileListData["code"] !== 200) return $fileList;
 
         return ResponseController::success([
             "baidu_name" => $downloadAccountInfoData["baidu_name"],
