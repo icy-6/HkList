@@ -23,7 +23,7 @@ RUN PHP_VERSION=$(php -v | head -n1 | cut -d' ' -f2 | cut -d. -f1-2) \
     && echo "extension=sourceguardian.so" > $PHP_INI_DIR/conf.d/15-sourceguardian.ini \
     && rm -rf /tmp/sourceguardian
 
-RUN apk add --no-cache openssl php83-pdo php83-pdo_mysql
+RUN apk add --no-cache openssl php83-pdo php83-pdo_mysql eudev-libs
 
 # 补全环境
 RUN apk update && \
