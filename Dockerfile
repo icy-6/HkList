@@ -13,6 +13,16 @@ RUN composer install --optimize-autoloader --no-interaction --no-progress
 FROM trafex/php-nginx:latest
 
 USER root
+
+RUN PHP_VERSION=$(php -v | head -n1 | cut -d' ' -f2 | cut -d. -f1-2) \
+    && mkdir -p /tmp/sourceguardian \
+    && cd /tmp/sourceguardian \
+    && curl -Os https://www.sourceguardian.com/loaders/download/loaders.linux-x86_64.tar.gz \
+    && tar xzf loaders.linux-x86_64.tar.gz \
+    && cp ixed.${PHP_VERSION}.lin "$(php -i | grep '^extension_dir =' | cut -d' ' -f3)/sourceguardian.so" \
+    && echo "extension=sourceguardian.so" > $PHP_INI_DIR/conf.d/15-sourceguardian.ini \
+    && rm -rf /tmp/sourceguardian
+
 RUN apk add --no-cache openssl php83-pdo php83-pdo_mysql
 
 # 补全环境
@@ -35,9 +45,6 @@ COPY --from=composer /app /var/www/HkList
 RUN chmod a+x /entrypoint.sh
 
 ###########################################################################
-
-# 环境变量
-ENV IS_DOCKER=true
 
 # 默认工作目录
 WORKDIR /var/www/html
