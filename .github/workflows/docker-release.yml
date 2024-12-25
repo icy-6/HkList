@@ -28,5 +28,5 @@ jobs:
           context: .
           push: true
           tags: |
-            your-dockerhub-username/your-image-name:latest
-            your-dockerhub-username/your-image-name:${{ github.ref_name }}
+            huankong233/hklist:${{ github.ref_name }}
+            huankong233/hklist:latest
