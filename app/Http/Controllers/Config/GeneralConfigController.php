@@ -12,7 +12,10 @@ class GeneralConfigController extends Controller
 {
     public function getConfig()
     {
-        return ResponseController::success(config("hklist.general"));
+        return ResponseController::success([
+            ...config("hklist.general"),
+            "version" => config("hklist.version"),
+        ]);
     }
 
     public function updateConfig(Request $request)

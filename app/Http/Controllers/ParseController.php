@@ -27,7 +27,6 @@ class ParseController extends Controller
     {
         $config = config("hklist");
         return ResponseController::success([
-            "version" => $config["version"],
             ...collect($config["general"])->only(["debug", "show_announce", "announce", "custom_button", "name", "logo", "show_hero"]),
             ...collect($config["limit"])->only(["max_once", "min_single_filesize", "max_single_filesize"]),
             "need_password" => $config["general"]["parse_password"] !== "",
@@ -366,6 +365,9 @@ class ParseController extends Controller
             foreach ($item["urls"] as $url) {
                 if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             }
+
+            $item["urls"] = array_filter($item["urls"], fn($url) => !str_contains($url, "ant.baidu.com"));
+            $item["urls"] = array_values($item["urls"]);
 
             Account::query()
                 ->find($item["account_id"])
