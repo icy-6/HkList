@@ -1,10 +1,12 @@
 # 依赖构建
-FROM composer AS composer
+FROM composer
 
 COPY .env.example .env
 
 # 复制项目源码
 COPY . /app
+
+# 删除vendor文件减小体积
 RUN rm vendor.zip
 
 # 开始构建
@@ -39,7 +41,7 @@ COPY .docker/default.conf /etc/nginx/conf.d/default.conf
 COPY .docker/entrypoint.sh /entrypoint.sh
 
 # 复制构建后项目源码
-COPY --from=composer /app /var/www/HkList
+COPY --from=composer /app /var/www/html
 
 # 赋权
 RUN chmod a+x /entrypoint.sh
