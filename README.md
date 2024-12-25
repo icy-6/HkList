@@ -17,7 +17,7 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 ### 程序需求
 
 - Mysql >= 5.7
-- PHP = 8.2
+- PHP = 8.2/8.3
 
 ### 注意
 
@@ -25,7 +25,7 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 
 新版本需要授权使用, 购买联系 [tg](https://t.me/huan_kong)
 
-### 普通安装（宝塔）
+### 宝塔安装
 
 - 1.解压 `vendor.zip`
 - 2.设置运行目录为 `/public`
@@ -33,6 +33,14 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 - 4.复制 `.env.example` 并重命名为 `.env`
 - 5.在软件商店内打开 `php` 并在安装扩展中安装 `sg15` 加密组件
 - 6.访问页面安装
+
+### Docker安装
+
+[Docker Hub](https://hub.docker.com/r/huankong233/hklist)
+
+- 默认暴露 `8080` 端口
+- 后台设置为临时修改, 需要持久化请使用环境变量
+- 可用环境变量见 `.env.example` 文件
 
 ## 相关仓库
 

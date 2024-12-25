@@ -203,7 +203,7 @@ class TokenController extends Controller
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
             ->first();
 
-        $firstRecord = Record::query()->where("token_id", $token["id"])->get("created_at")->first()->toArray();
+        $firstRecord = Record::query()->where("token_id", $token["id"])->get("created_at")->first();
 
         return ResponseController::success([
             "token" => $token["token"],
@@ -212,7 +212,7 @@ class TokenController extends Controller
             "remaining_count" => $token["count"] - $records["count"],
             "remaining_size" => $token["size"] - $records["size"],
             "ip" => $token["ip"],
-            "used_at" => $firstRecord ? $firstRecord["created_at"] : null,
+            "used_at" => $firstRecord ? $firstRecord->toArray()["created_at"] : null,
             "expires_at" => $token["expires_at"],
         ]);
     }
