@@ -17,7 +17,7 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 ### 程序需求
 
 - Mysql >= 5.7
-- PHP = 8.2
+- PHP = 8.2/8.3
 
 ### 注意
 
