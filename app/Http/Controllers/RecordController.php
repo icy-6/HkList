@@ -43,7 +43,7 @@ class RecordController extends Controller
 
         if ($request["token"] === "guest") {
             $recordsQuery->where(function (Builder $query) use ($request) {
-                $query->where("ip", $request->ip())->orWhere("fingerprint", $request["rand2"]);
+                $query->where("ip", UtilsController::getIp($request))->orWhere("fingerprint", $request["rand2"]);
             });
         }
 

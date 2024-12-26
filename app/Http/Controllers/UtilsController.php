@@ -10,6 +10,7 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Database\Eloquent\Casts\Json;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
@@ -129,6 +130,13 @@ class UtilsController extends Controller
             "province" => $prov !== "0" ? $prov : "海外",
             "isCn" => $country === "中国"
         ]);
+    }
+
+    public static function getIp(Request $request)
+    {
+        $ips = $request->ips();
+        if (count($ips) === 0) return "127.0.0.1";
+        return $ips[count($ips) - 1];
     }
 
     public static function updateEnv($data)
