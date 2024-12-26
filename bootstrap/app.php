@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // 信任所有代理
-        $middleware->trustProxies();
+        $middleware->trustProxies("*");
         $middleware->remove(\Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class);
         $middleware->alias([
             "IsInstall" => \App\Http\Middleware\IsInstall::class,

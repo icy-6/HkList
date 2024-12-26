@@ -3,11 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Http\Controllers\ResponseController;
+use App\Http\Controllers\UtilsController;
 use App\Models\BlackList;
 use App\Models\Fingerprint;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 
 class IdentifierFilter
