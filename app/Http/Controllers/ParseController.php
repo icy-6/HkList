@@ -55,12 +55,12 @@ class ParseController extends Controller
             $recordsQuery
                 ->where(function (Builder $query) use ($request) {
                     $query->where("fingerprint", $request["rand2"])
-                        ->orWhere("ip", $request->ip());
+                        ->orWhere("ip", UtilsController::getIp($request));
                 })
                 ->whereDate("records.created_at", "=", now());
         } else {
             // 非游客
-            if (!in_array($request->ip(), $token["ip"]) && count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+            if (!in_array(UtilsController::getIp($request), $token["ip"]) && count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
 
             // 检查是否已经过期
             if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
@@ -159,7 +159,7 @@ class ParseController extends Controller
         $limit_cn = config("hklist.limit.limit_cn");
         $limit_prov = config("hklist.limit.limit_prov");
         if ($limit_cn || $limit_prov) {
-            $ip = $request->ip();
+            $ip = UtilsController::getIp($request);
             $prov = UtilsController::getProvinces($ip);
             $provData = $prov->getData(true);
             if ($provData["code"] !== 200) return $prov;
@@ -347,7 +347,7 @@ class ParseController extends Controller
         $responseData = $responseData["data"];
 
         $token = Token::query()->firstWhere("token", $request["token"]);
-        $ip = $request->ip();
+        $ip = UtilsController::getIp($request);
 
         if ($token["token"] !== "guest") {
             if (!in_array($ip, $token["ip"])) {
@@ -386,7 +386,7 @@ class ParseController extends Controller
                 ]);
                 // 插入记录
                 Record::query()->create([
-                    "ip" => $request->ip(),
+                    "ip" => UtilsController::getIp($request),
                     "fingerprint" => $request["rand2"],
                     "fs_id" => $fs_id["id"],
                     "urls" => $item["urls"],

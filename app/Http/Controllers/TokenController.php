@@ -194,7 +194,7 @@ class TokenController extends Controller
             $recordsQuery
                 ->where(function (Builder $query) use ($request) {
                     $query->where("fingerprint", $request["rand2"])
-                        ->orWhere("ip", $request->ip());
+                        ->orWhere("ip", UtilsController::getIp($request));
                 })
                 ->whereDate("records.created_at", "=", now());
         }
