@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             "IsInstall" => \App\Http\Middleware\IsInstall::class,
             "IdentifierFilter" => \App\Http\Middleware\IdentifierFilter::class,
             "PassFilter" => \App\Http\Middleware\PassFilter::class,
-            "CheckRand" => \App\Http\Middleware\CheckRand::class
+            "CheckRand" => \App\Http\Middleware\CheckRand::class,
+            "AutoUpdate" => \App\Http\Middleware\AutoUpdate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

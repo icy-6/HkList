@@ -68,9 +68,9 @@ class ResponseController extends Controller
         return self::response(20009, 500, "获取企业账号信息失败,errmsg: $errmsg");
     }
 
-    public static function getAccountAPLFailed($errmsg = "未知")
+    public static function getAccountAPLFailed($errno,$errmsg = "未知")
     {
-        return self::response(20010, 500, "获取账号封禁状态失败,errmsg: $errmsg");
+        return self::response(20010, 500, "获取账号封禁状态失败,errno: $errno, errmsg: $errmsg");
     }
 
     public static function getFileListFailed($errno = "未知", $errtype = "未知")
