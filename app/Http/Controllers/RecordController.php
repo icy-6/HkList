@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FileList;
 use App\Models\Record;
 use App\Models\Token;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;

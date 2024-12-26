@@ -268,7 +268,7 @@ class BDWPApiController extends Controller
             $antiData["errno"] !== 0 ||
             $antiData["errmsg"] !== "success"
         ) {
-            return ResponseController::getAccountAPLFailed($antiData["show_msg"]);
+            return ResponseController::getAccountAPLFailed($antiData["errno"], $antiData["errmsg"]);
         }
 
         return ResponseController::success($antiData["anti"]);
