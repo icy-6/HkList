@@ -53,10 +53,7 @@ class ParseController extends Controller
         if ($request["token"] === "guest") {
             // 绑定指纹,每日刷新
             $recordsQuery
-                ->where(function (Builder $query) use ($request) {
-                    $query->where("fingerprint", $request["rand2"])
-                        ->orWhere("ip", UtilsController::getIp($request));
-                })
+                ->where("ip", UtilsController::getIp($request))
                 ->whereDate("records.created_at", "=", now());
         } else {
             // 非游客

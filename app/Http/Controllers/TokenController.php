@@ -192,10 +192,7 @@ class TokenController extends Controller
         $recordsQuery = Record::query()->where("token_id", $token["id"]);
         if ($request["token"] === "guest") {
             $recordsQuery
-                ->where(function (Builder $query) use ($request) {
-                    $query->where("fingerprint", $request["rand2"])
-                        ->orWhere("ip", UtilsController::getIp($request));
-                })
+                ->where("ip", UtilsController::getIp($request))
                 ->whereDate("records.created_at", "=", now());
         }
         $records = $recordsQuery->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")

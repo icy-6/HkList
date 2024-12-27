@@ -26,16 +26,6 @@ class IdentifierFilter
 
             $fingerprint = BlackList::query()->firstWhere(["type" => "fingerprint", "identifier" => $request["rand2"]]);
             if ($fingerprint) return ResponseController::inBlackList($fingerprint["reason"]);
-
-            // 插入指纹
-            $fingerprint = Fingerprint::query()->firstWhere(["fingerprint" => $request["rand2"]]);
-            if (!$fingerprint) $fingerprint = Fingerprint::query()->create(["fingerprint" => $request["rand2"], "ip" => []]);
-            if (!in_array(UtilsController::getIp($request), $fingerprint["ip"])) {
-                $fingerprint->update([
-                    "ip" => [...$fingerprint["ip"], UtilsController::getIp($request)]
-                ]);
-            }
-            if (count($fingerprint["ip"]) > config("hklist.limit.fingerprint_for_ip")) return ResponseController::inBlackList("指纹绑定的IP超出上限");
         }
 
         return $next($request);
