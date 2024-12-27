@@ -62,10 +62,6 @@ Route::middleware(["CheckRand", "AutoUpdate"])->group(function () {
                     Route::get("/", [RecordController::class, "select"]);
                 });
 
-                Route::prefix("/fingerprint")->group(function () {
-                    Route::get("/", [FingerprintController::class, "select"]);
-                });
-
                 Route::prefix("/config")->group(function () {
                     Route::prefix("/general")->group(function () {
                         Route::get("/", [GeneralConfigController::class, "getConfig"]);

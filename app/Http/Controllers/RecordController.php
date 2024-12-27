@@ -41,11 +41,7 @@ class RecordController extends Controller
             ->with(["file:id,filename,size"])
             ->where("token_id", $token["id"]);
 
-        if ($request["token"] === "guest") {
-            $recordsQuery->where(function (Builder $query) use ($request) {
-                $query->where("ip", UtilsController::getIp($request))->orWhere("fingerprint", $request["rand2"]);
-            });
-        }
+        if ($request["token"] === "guest") $recordsQuery->where("ip", UtilsController::getIp($request));
 
         $records = $recordsQuery->orderBy("id", "desc")->paginate(
             $request["size"] ?? 5,
