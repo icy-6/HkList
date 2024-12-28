@@ -17,6 +17,8 @@ class AutoUpdate
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (config("database.default") === "no") return $next($request);
+
         // 2.0.7 新增指纹ip对应表
 //        if (!Schema::hasTable('fingerprints')) {
 //            Schema::create('fingerprints', function (Blueprint $table) {
