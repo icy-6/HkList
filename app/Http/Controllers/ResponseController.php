@@ -68,7 +68,7 @@ class ResponseController extends Controller
         return self::response(20009, 500, "获取企业账号信息失败,errmsg: $errmsg");
     }
 
-    public static function getAccountAPLFailed($errno,$errmsg = "未知")
+    public static function getAccountAPLFailed($errno, $errmsg = "未知")
     {
         return self::response(20010, 500, "获取账号封禁状态失败,errno: $errno, errmsg: $errmsg");
     }
@@ -286,5 +286,10 @@ class ResponseController extends Controller
     public static function getRealLinkFailed($errno, $errmsg)
     {
         return self::response(20051, 400, "获取下载链接失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function proxyIsNotEnable()
+    {
+        return self::response(20052, 400, "代理未启用");
     }
 }
