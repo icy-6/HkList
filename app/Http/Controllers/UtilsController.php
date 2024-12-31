@@ -9,10 +9,12 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\ServerException;
+use GuzzleHttp\RequestOptions;
 use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use XdbSearcher;
 
@@ -37,9 +39,19 @@ class UtilsController extends Controller
         }
     }
 
-    public static function sendRequest($actionName, $requestMethod, $requestUrl, $requestOptions)
+    public static function sendRequest($actionName, $requestMethod, $requestUrl, $requestOptions = [])
     {
-        $http = new Client();
+        if (config("hklist.proxy.enable")) {
+            $http = new Client([
+                RequestOptions::PROXY => config("hklist.proxy"),
+                RequestOptions::VERIFY => false
+            ]);
+        } else {
+            $http = new Client([
+                RequestOptions::VERIFY => false
+            ]);
+        }
+
         try {
             $res = $http->request($requestMethod, $requestUrl, $requestOptions);
             $data = Json::decode($res->getBody()->getContents()) ?? null;
@@ -48,9 +60,11 @@ class UtilsController extends Controller
             return ResponseController::networkError($actionName);
         } catch (ClientException $e) {
             $data = Json::decode($e->getResponse()->getBody()->getContents()) ?? null;
+            Log::error("$actionName 4xx", [$requestMethod, $requestUrl, $requestOptions, $data]);
             return ResponseController::requestError($actionName, $data);
         } catch (ServerException $e) {
-            $data = ["body" => $e->getResponse()->getBody()->getContents()];
+            $data = ["body" => $e->getResponse()->getBody()->getContents() ?? null];
+            Log::error("$actionName 5xx", [$requestMethod, $requestUrl, $requestOptions, $data]);
             return ResponseController::requestServerError($actionName, $data);
         } catch (Exception|GuzzleException $e) {
             return ResponseController::unknownError($actionName, $e);
