@@ -288,7 +288,9 @@ class ParseController extends Controller
             "surl" => "required|string",
             "dir" => "required|string",
             "pwd" => "nullable|string",
-            "token" => "required|string"
+            "token" => "required|string",
+            "vcode_str" => "nullable|string",
+            "vcode_input" => "nullable|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
