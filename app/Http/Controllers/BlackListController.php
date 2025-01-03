@@ -69,7 +69,7 @@ class BlackListController extends Controller
             "expires_at" => $request["expires_at"]
         ];
 
-        if (count($request["id"]) < 1) {
+        if (count($request["id"]) <= 1) {
             if (isset($request["type"])) $update["type"] = $request["type"];
             if (isset($request["identifier"])) $update["identifier"] = $request["identifier"];
         }

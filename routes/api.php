@@ -7,7 +7,6 @@ use App\Http\Controllers\Config\GeneralConfigController;
 use App\Http\Controllers\Config\LimitConfigController;
 use App\Http\Controllers\Config\MailConfigController;
 use App\Http\Controllers\Config\ParseConfigController;
-use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\ParseController;
 use App\Http\Controllers\ProxyController;
@@ -40,6 +39,7 @@ Route::middleware(["CheckRand", "AutoUpdate"])->group(function () {
                     Route::get("/", [AccountController::class, "select"]);
                     Route::post("/", [AccountController::class, "insert"]);
                     Route::post("/update_info", [AccountController::class, "updateInfo"]);
+                    Route::post("/update_data", [AccountController::class, "updateData"]);
                     Route::post("/check_ban_status", [AccountController::class, "checkBanStatus"]);
                     Route::patch("/", [AccountController::class, "update"]);
                     Route::delete("/", [AccountController::class, "delete"]);

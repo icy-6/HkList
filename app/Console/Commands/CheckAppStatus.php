@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Http\Controllers\UtilsController;
+use App\Models\Account;
 use App\Models\Token;
 use Illuminate\Console\Command;
 use Illuminate\Database\Schema\Blueprint;
@@ -39,7 +40,7 @@ class CheckAppStatus extends Command
                 $table->id();
                 $table->text("baidu_name");
                 $table->text("uk");
-                $table->enum("account_type", ["cookie", "enterprise_cookie", "open_platform", "download_ticket"]);
+                $table->enum("account_type", Account::$account_types);
                 $table->json("account_data");
                 $table->boolean("switch");
                 $table->text("reason");
