@@ -133,7 +133,7 @@ class TokenController extends Controller
         if (isset($request["ip"])) $update["ip"] = $request["ip"];
         if (isset($request["expires_at"])) $update["expires_at"] = $request["expires_at"];
 
-        if (count($request["id"]) < 1) {
+        if (count($request["id"]) <= 1) {
             if ($request["token"]) {
                 $update["token"] = $request["token"];
 

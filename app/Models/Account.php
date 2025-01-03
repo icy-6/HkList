@@ -8,6 +8,13 @@ class Account extends Model
 {
     use SoftDeletes;
 
+    public static array $account_types = [
+        "cookie",
+        "enterprise_cookie",
+        "open_platform",
+        "download_ticket"
+    ];
+
     public static array $attrs = [
         "id",
         "baidu_name",

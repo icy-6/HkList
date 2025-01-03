@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Token;
 use Exception;
 use Illuminate\Database\Schema\Blueprint;
@@ -45,7 +46,7 @@ class InstallController extends Controller
                 $table->id();
                 $table->text("baidu_name");
                 $table->text("uk");
-                $table->enum("account_type", ["cookie", "enterprise_cookie", "open_platform", "download_ticket"]);
+                $table->enum("account_type", Account::$account_types);
                 $table->json("account_data");
                 $table->boolean("switch");
                 $table->text("reason");

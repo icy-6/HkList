@@ -354,6 +354,30 @@ class AccountController extends Controller
         }
     }
 
+    public function updateData(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "id" => "required|array",
+            "id.*" => "required|numeric",
+            "account_type" => ["required", Rule::in(Account::$account_types)],
+            "account_data" => "required|array",
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $accounts = Account::query()
+            ->whereIn("id", $request["id"])
+            ->get();
+
+        foreach ($accounts as $account) {
+            $account->update([
+                "account_type" => $request["account_type"],
+                "account_data" => $request["account_data"],
+            ]);
+        }
+
+        return ResponseController::success();
+    }
+
     public static function updateInfo(Request $request, $data = [])
     {
         if (count($data) === 0) {
