@@ -5,7 +5,7 @@ return [
     "fake_wx_user_agent" => env("HKLIST_FAKE_WX_USER_AGENT", "Mozilla/5.0 (Linux; Android 7.1.1; MI 6 Build/NMF26X; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.2987.132 MQQBrowser/6.2 TBS/043807 Mobile Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/4G Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/4G Language/zh_CN miniProgram"),
     "fake_cookie" => env("HKLIST_FAKE_COOKIE", "BAIDUID=A4FDFAE43DDBF7E6956B02F6EF715373:FG=1; BAIDUID_BFESS=A4FDFAE43DDBF7E6956B02F6EF715373:FG=1; newlogin=1"),
 
-    "version" => "2.0.17",
+    "version" => "2.0.18",
 
     "general" => [
         "admin_password" => env("HKLIST_ADMIN_PASSWORD", ""),
@@ -24,8 +24,7 @@ return [
         "max_single_filesize" => (float)env("HKLIST_MAX_SINGLE_FILESIZE", 53687091200),
         "max_download_daily_pre_account" => (float)env("HKLIST_MAX_DOWNLOAD_DAILY_PRE_ACCOUNT", 0),
         "limit_cn" => (bool)env("HKLIST_LIMIT_CN", true),
-        "limit_prov" => (bool)env("HKLIST_LIMIT_PROV", false),
-        "fingerprint_for_ip" => (int)env("HKLIST_FINGERPRINT_FOR_IP", 20),
+        "limit_prov" => (bool)env("HKLIST_LIMIT_PROV", false)
     ],
     "parse" => [
         "parser_server" => env("HKLIST_PARSER_SERVER", ""),
