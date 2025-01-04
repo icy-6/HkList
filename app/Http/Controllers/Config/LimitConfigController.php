@@ -23,8 +23,7 @@ class LimitConfigController extends Controller
             "max_single_filesize" => "required|numeric",
             "max_download_daily_pre_account" => "required|numeric",
             "limit_cn" => "required|boolean",
-            "limit_prov" => "required|boolean",
-            "fingerprint_for_ip" => "required|numeric",
+            "limit_prov" => "required|boolean"
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -35,8 +34,7 @@ class LimitConfigController extends Controller
             "HKLIST_MAX_SINGLE_FILESIZE" => $request["max_single_filesize"],
             "HKLIST_MAX_DOWNLOAD_DAILY_PRE_ACCOUNT" => $request["max_download_daily_pre_account"],
             "HKLIST_LIMIT_CN" => $request["limit_cn"],
-            "HKLIST_LIMIT_PROV" => $request["limit_prov"],
-            "HKLIST_FINGERPRINT_FOR_IP" => $request["fingerprint_for_ip"],
+            "HKLIST_LIMIT_PROV" => $request["limit_prov"]
         ]);
 
         return ResponseController::success();
