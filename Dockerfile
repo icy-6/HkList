@@ -29,6 +29,7 @@ RUN apk add --no-cache openssl php83-pdo php83-pdo_mysql eudev-libs
 
 # 补全环境
 RUN apk update && \
+    apk upgrade && \
     apk add tzdata && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
