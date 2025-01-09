@@ -28,7 +28,7 @@ class ParseController extends Controller
         $config = config("hklist");
         return ResponseController::success([
             ...collect($config["general"])->only(["debug", "show_announce", "announce", "custom_button", "name", "logo", "show_hero"]),
-            ...collect($config["limit"])->only(["max_once", "min_single_filesize", "max_single_filesize"]),
+            ...collect($config["limit"])->only(["max_once", "min_single_filesize", "max_single_filesize", "max_all_filesize"]),
             "need_password" => $config["general"]["parse_password"] !== "",
             "have_account" => self::getRandomCookie($request)->getData(true)["code"] === 200,
         ]);
@@ -328,8 +328,12 @@ class ParseController extends Controller
             if ($file["size"] > $max_filesize) return ResponseController::fileIsTooBig();
         }
 
+        $sum = $fileList->sum("size");
+
+        if ($sum > config("hklist.limit.max_all_filesize")) return ResponseController::filesIsTooBig();
+
         // 检查文件总大小是否大于剩余配额
-        if ($fileList->sum("size") > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
+        if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
 
         $response = match (config("hklist.parse.parse_mode")) {
             0 => V0Controller::request($request),
