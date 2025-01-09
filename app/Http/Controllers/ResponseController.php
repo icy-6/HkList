@@ -292,4 +292,9 @@ class ResponseController extends Controller
     {
         return self::response(20052, 400, "代理未启用");
     }
+
+    public static function filesIsTooBig()
+    {
+        return self::response(20053, 400, "选择解析的文件总量过大");
+    }
 }
