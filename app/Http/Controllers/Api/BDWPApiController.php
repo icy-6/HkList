@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\UtilsController;
 use Illuminate\Database\Eloquent\Casts\Json;
+use Illuminate\Support\Facades\Log;
 
 class BDWPApiController extends Controller
 {
@@ -52,11 +53,9 @@ class BDWPApiController extends Controller
         $userInfo = $data["data"];
         if (
             !isset($userInfo["errno"]) ||
-            !isset($userInfo["errmsg"]) ||
-            $userInfo["errno"] !== 0 ||
-            $userInfo["errmsg"] !== "succ"
+            $userInfo["errno"] !== 0
         ) {
-            return ResponseController::getAccountInfoFailed($userInfo["errmsg"]);
+            return ResponseController::getAccountInfoFailed($userInfo["errno"] ?? "未知", $userInfo["errmsg"] ?? "未知");
         }
 
         return ResponseController::success([
@@ -70,7 +69,7 @@ class BDWPApiController extends Controller
 
     /**
      * {
-     *      "svip_type": "超级会员",
+     *      "vip_type": "超级会员",
      *      "expires_at": 100
      * }
      */
@@ -108,11 +107,9 @@ class BDWPApiController extends Controller
         $userInfo = $data["data"];
         if (
             !isset($userInfo["error_code"]) ||
-            !isset($userInfo["error_msg"]) ||
-            $userInfo["error_code"] !== 0 ||
-            $userInfo["error_msg"] !== ""
+            $userInfo["error_code"] !== 0
         ) {
-            return ResponseController::getSvipAtFailed($userInfo["error_msg"]);
+            return ResponseController::getSvipAtFailed($userInfo["error_code"] ?? "未知", $userInfo["error_msg"] ?? "未知");
         }
 
         $current_product = $userInfo["current_product_v2"];
@@ -125,7 +122,7 @@ class BDWPApiController extends Controller
             $expires_at = $reminder["serverTime"] + $reminder["svip"]["leftseconds"];
         } else {
             $vip_type = "普通会员";
-            $expires_at = 0;
+            $expires_at = $reminder["serverTime"] + $reminder["vip"]["leftseconds"];
         }
 
         return ResponseController::success([
@@ -162,7 +159,12 @@ class BDWPApiController extends Controller
         if ($data["code"] !== 200) return $res;
 
         $accessToken = $data["data"];
-        if (isset($accessToken["error_description"])) return ResponseController::getAccessTokenFailed($accessToken["error_description"]);
+        if (
+            isset($accessToken["error"]) ||
+            isset($accessToken["error_description"])
+        ) {
+            return ResponseController::getAccessTokenFailed($accessToken["error"] ?? "未知", $accessToken["error_description"] ?? "未知");
+        }
 
         return ResponseController::success([
             "expires_at" => now()->addSeconds($accessToken["expires_in"]),
@@ -201,16 +203,14 @@ class BDWPApiController extends Controller
         $enterpriseInfo = $data["data"];
         if (
             !isset($enterpriseInfo["errno"]) ||
-            !isset($enterpriseInfo["newno"]) ||
-            !isset($enterpriseInfo["show_msg"]) ||
-            $enterpriseInfo["errno"] !== 0 ||
-            $enterpriseInfo["newno"] !== "" ||
-            $enterpriseInfo["show_msg"] !== ""
+            $enterpriseInfo["errno"] !== 0
         ) {
-            return ResponseController::getEnterpriseInfoFailed($enterpriseInfo["show_msg"]);
+            return ResponseController::getEnterpriseInfoFailed($enterpriseInfo["errno"] ?? "未知", $enterpriseInfo["show_msg"] ?? "未知");
         }
 
-        if (!isset($enterpriseInfo["data"][0]) || !isset($enterpriseInfo["data"][0]["cid"])) return ResponseController::getEnterpriseInfoFailed("账号不是企业账号,获取cid失败");
+        if (!isset($enterpriseInfo["data"][0])) {
+            return ResponseController::getEnterpriseInfoFailed(999, "账号可能不是企业账号,获取cid失败");
+        }
 
         $enterpriseInfoData = $enterpriseInfo["data"][0];
         return ResponseController::success([
@@ -264,14 +264,22 @@ class BDWPApiController extends Controller
 
         if (
             !isset($antiData["errno"]) ||
-            !isset($antiData["errmsg"]) ||
-            $antiData["errno"] !== 0 ||
-            $antiData["errmsg"] !== "success"
+            $antiData["errno"] !== 0
         ) {
-            return ResponseController::getAccountAPLFailed($antiData["errno"], $antiData["errmsg"]);
+            return ResponseController::getAccountAPLFailed($antiData["errno"] ?? "未知", $antiData["errmsg"] ?? "未知");
         }
 
-        return ResponseController::success($antiData["anti"]);
+        $anti = $antiData["anti"];
+
+        return ResponseController::success([
+            "start_time" => $anti["start_time"],
+            "end_time" => $anti["end_time"],
+            "ban_status" => $anti["ban_status"],
+            "ban_reason" => $anti["ban_reason"],
+            "ban_times" => $anti["ban_times"],
+            "ban_msg" => $anti["ban_msg"],
+            "user_operate_type" => $anti["user_operate_type"]
+        ]);
     }
 
     public static function decodeSecKey($seckey)
@@ -341,7 +349,7 @@ class BDWPApiController extends Controller
             !isset($response["errno"]) ||
             !isset($response["errtype"])
         ) {
-            return ResponseController::getFileListFailed($response["errno"], $response["errtype"]);
+            return ResponseController::getFileListFailed($response["errno"] ?? "未知", $response["errtype"] ?? "未知");
         }
 
         $errno = $response["errno"];
@@ -367,10 +375,9 @@ class BDWPApiController extends Controller
                     "mis_2", "mis_4" => "路径错误",
                     default => null
                 };
-                if ($info === null) return ResponseController::getFileListFailed($errno, $errtype);
-                return ResponseController::getFileListMsgFailed($info);
+                return ResponseController::getFileListFailed($errno, $info ?? $errtype);
             } else if ($errno === 2) {
-                return ResponseController::getFileListMsgFailed("surl错误");
+                return ResponseController::getFileListFailed(999, "surl错误");
             }
 
             return ResponseController::getFileListFailed($errno, $errtype);
@@ -434,7 +441,7 @@ class BDWPApiController extends Controller
             !isset($response["errno"]) ||
             $response["errno"] !== 0
         ) {
-            return ResponseController::getVcodeFailed($response["errno"]);
+            return ResponseController::getVcodeFailed($response["errno"] ?? "未知");
         }
 
         return ResponseController::success([
@@ -489,11 +496,14 @@ class BDWPApiController extends Controller
         $response = $data["data"];
         if (
             !isset($response["errno"]) ||
-            !isset($response["show_msg"]) ||
-            $response["errno"] !== 0 ||
-            $response["show_msg"] !== ""
+            $response["errno"] !== 0
         ) {
-            return ResponseController::saveToDiskFailed($response["errno"], $response["show_msg"] ?? "未知");
+            return ResponseController::saveToDiskFailed($response["errno"] ?? "未知", $response["show_msg"] ?? "未知");
+        }
+
+        if (!isset($response["extra"]) || !isset($response["extra"]["list"])) {
+            Log::error("why without extra??", $response);
+            return ResponseController::transferFileFailed($response["errno"], ($response["show_msg"] ?? "未知") . "but without extra??");
         }
 
         return ResponseController::success($response["extra"]["list"]);
@@ -534,7 +544,13 @@ class BDWPApiController extends Controller
         if ($data["code"] !== 200) return $res;
 
         $response = $data["data"];
-        if (!isset($response["urls"])) return ResponseController::downloadByDiskFailed($response["error_code"], $response["error_msg"]);
+        if (
+            isset($response["error_code"]) ||
+            isset($response["error_msg"]) ||
+            !isset($response["urls"])
+        ) {
+            return ResponseController::downloadByDiskFailed($response["error_code"] ?? "未知", $response["error_msg"] ?? "未知");
+        }
 
         return ResponseController::success([
             "urls" => array_reverse(array_map(fn($v) => $v["url"], $response["urls"]))
@@ -580,7 +596,7 @@ class BDWPApiController extends Controller
             !isset($response["result"]) ||
             $response["errno"] !== 0
         ) {
-            return ResponseController::getTemplateVariableFailed($response["errno"]);
+            return ResponseController::getTemplateVariableFailed($response["errno"] ?? "未知");
         }
 
         return ResponseController::success([
