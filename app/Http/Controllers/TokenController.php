@@ -138,7 +138,7 @@ class TokenController extends Controller
                 $update["token"] = $request["token"];
 
                 // 如果是guest
-                if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken("请不要修改游客的卡密值");
+                if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken("修改");
             }
         }
 
@@ -162,7 +162,7 @@ class TokenController extends Controller
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         // 如果是guest
-        if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken("请不要删除游客卡密");
+        if (in_array(1, $request["id"])) return ResponseController::canNotChangeGuestToken("删除");
 
         $count = Token::query()
             ->whereIn("id", $request["id"])
