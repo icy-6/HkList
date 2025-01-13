@@ -380,7 +380,7 @@ class ParseController extends Controller
                 ]);
 
             if ($isLimit) {
-                $item["message"] = "下载链接已限速,推荐重新解析";
+                $item["message"] = "获取成功,但下载链接已限速,推荐重新解析";
             } else {
                 $fs_id = FileList::query()->firstWhere([
                     "surl" => $request["surl"],
