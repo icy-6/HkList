@@ -167,7 +167,7 @@ class BDWPApiController extends Controller
         }
 
         return ResponseController::success([
-            "expires_at" => now()->addSeconds($accessToken["expires_in"]),
+            "expires_at" => now()->addSeconds($accessToken["expires_in"])->getTimestamp(),
             "access_token" => $accessToken["access_token"],
             "refresh_token" => $accessToken["refresh_token"],
         ]);

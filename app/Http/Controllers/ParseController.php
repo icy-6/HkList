@@ -243,7 +243,7 @@ class ParseController extends Controller
 
         if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
             // 忽略普通用户
-            if ($account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
+            if ($account_type === "cookie" && $account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
             $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
             if (!$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
         } else if ($account_type === "open_platform") {
