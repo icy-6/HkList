@@ -300,6 +300,16 @@ class ResponseController extends Controller
 
     public static function getQuoteFailed($errno, $errmsg)
     {
-        return self::response(20044, 400, "获取配额失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20054, 400, "获取配额失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function getDlinkOpenPlatformFailed($errno, $errmsg)
+    {
+        return self::response(20055, 400, "开放平台获取Dlink失败, errno: $errno, errmsg: $errmsg");
+    }
+
+    public static function getReallinkOpenPlatformFailed($errno, $errmsg)
+    {
+        return self::response(20056, 400, "开放平台获取Reallink失败, errno: $errno, errmsg: $errmsg");
     }
 }

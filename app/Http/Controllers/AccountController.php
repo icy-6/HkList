@@ -55,19 +55,22 @@ class AccountController extends Controller
         if ($vipInfoData["code"] !== 200) return $vipInfo;
         $vipInfoData = $vipInfoData["data"];
 
-        return ResponseController::success([
+        $result = [
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => $accountType,
             "account_data" => [
-                $accountType => $cookieOrAccessToken,
                 "vip_type" => $vipInfoData["vip_type"],
                 "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s")
             ],
             "switch" => 1,
             "reason" => "",
             "prov" => null
-        ]);
+        ];
+
+        if ($accountType === "cookie") $result["account_data"]["cookie"] = $cookieOrAccessToken;
+
+        return ResponseController::success($result);
     }
 
     private static function getEnterpriseInfo($cookie)
@@ -84,6 +87,12 @@ class AccountController extends Controller
         if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
         $enterpriseInfoData = $enterpriseInfoData["data"];
 
+        $templateVariableInfo = BDWPApiController::getTemplateVariable($cookie);
+        $templateVariableInfoData = $templateVariableInfo->getData(true);
+        if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
+        $templateVariableInfoData = $templateVariableInfoData["data"];
+
+
         $expires_at = Carbon::createFromTimestamp($enterpriseInfoData["expires_at"], config("app.timezone"));
         $is_expired = $expires_at->isPast();
 
@@ -94,7 +103,8 @@ class AccountController extends Controller
             "account_data" => [
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
-                "expires_at" => $expires_at->format("Y-m-d H:i:s")
+                "expires_at" => $expires_at->format("Y-m-d H:i:s"),
+                "bdstoken" => $templateVariableInfoData["bdstoken"]
             ],
             "switch" => !$is_expired,
             "reason" => $is_expired ? "企业套餐已过期" : "",
@@ -137,7 +147,7 @@ class AccountController extends Controller
         // 只需检查cookie是否有效
         $saveAccountInfo = BDWPApiController::getAccountInfo("cookie", $save_cookie);
         $saveAccountInfoData = $saveAccountInfo->getData(true);
-        if ($saveAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("save_cookie:" . $saveAccountInfoData["message"]);
+        if ($saveAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed(999, "save_cookie:" . $saveAccountInfoData["message"]);
 
         // 获取企业信息 (cid和到期时间)
         $enterpriseInfo = BDWPApiController::getEnterpriseInfo($save_cookie);
@@ -157,7 +167,7 @@ class AccountController extends Controller
 
         $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
         $downloadAccountInfoData = $downloadAccountInfo->getData(true);
-        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed("download_cookie:" . $downloadAccountInfoData["message"]);
+        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed(999, "download_cookie:" . $downloadAccountInfoData["message"]);
         $downloadAccountInfoData = $downloadAccountInfoData["data"];
 
         // 检查链接是否有效
