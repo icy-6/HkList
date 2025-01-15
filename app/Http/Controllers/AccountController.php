@@ -445,7 +445,7 @@ class AccountController extends Controller
                 ];
             } else if ($account_type === "open_platform") {
                 $data = [
-                    BDWPApiController::getAccountAPL("open_platform", $account_data["open_platform"])
+                    BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
                 ];
             } else if ($account_type === "download_ticket") {
                 $data = [
