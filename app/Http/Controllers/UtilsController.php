@@ -191,7 +191,7 @@ class UtilsController extends Controller
 
     public static function banAccount($actionName, $message, $id)
     {
-        if (str_contains($message, "网络异常")) return;
+        if (str_contains($message, "网络异常") || str_contains($message, "服务器侧出现错误")) return;
         Account::query()
             ->find($id)
             ->update([
