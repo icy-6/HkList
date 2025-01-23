@@ -195,12 +195,12 @@ class ResponseController extends Controller
 
     public static function accountIsNotEnough()
     {
-        return self::response(20033, 500, "账号不足");
+        return self::response(20033, 400, "账号不足");
     }
 
     public static function unknownAccountType()
     {
-        return self::response(20034, 500, "未知账号类型");
+        return self::response(20034, 400, "未知账号类型");
     }
 
     public static function saveToDiskFailed($errno, $errmsg)
@@ -245,47 +245,47 @@ class ResponseController extends Controller
 
     public static function getUinfoFailed($errno)
     {
-        return self::response(20043, 400, "获取Uinfo失败, errno: $errno");
+        return self::response(20043, 500, "获取Uinfo失败, errno: $errno");
     }
 
     public static function getQuoteEnterpriseFailed($errno)
     {
-        return self::response(20044, 400, "获取企业配额失败, errno: $errno");
+        return self::response(20044, 500, "获取企业配额失败, errno: $errno");
     }
 
     public static function deleteFolderFailed($errno, $errmsg)
     {
-        return self::response(20045, 400, "删除文件夹失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20045, 500, "删除文件夹失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function createFolderFailed($errno, $errmsg)
     {
-        return self::response(20046, 400, "创建文件夹失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20046, 500, "创建文件夹失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function getFolderFailed($errno, $errmsg)
     {
-        return self::response(20047, 400, "获取文件夹失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20047, 500, "获取文件夹失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function transferFileFailed($errno, $errmsg)
     {
-        return self::response(20048, 400, "转存文件失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20048, 500, "转存文件失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function getDlinkFailed($errno)
     {
-        return self::response(20049, 400, "获取Dlink失败, errno: $errno");
+        return self::response(20049, 500, "获取Dlink失败, errno: $errno");
     }
 
     public static function getTolConfigFailed($errno, $errmsg)
     {
-        return self::response(20050, 400, "获取tplconfig失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20050, 500, "获取tplconfig失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function getRealLinkFailed($errno, $errmsg)
     {
-        return self::response(20051, 400, "获取下载链接失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20051, 500, "获取下载链接失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function proxyIsNotEnable()
@@ -300,16 +300,16 @@ class ResponseController extends Controller
 
     public static function getQuoteFailed($errno, $errmsg)
     {
-        return self::response(20054, 400, "获取配额失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20054, 500, "获取配额失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function getDlinkOpenPlatformFailed($errno, $errmsg)
     {
-        return self::response(20055, 400, "开放平台获取Dlink失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20055, 500, "开放平台获取Dlink失败, errno: $errno, errmsg: $errmsg");
     }
 
     public static function getReallinkOpenPlatformFailed($errno, $errmsg)
     {
-        return self::response(20056, 400, "开放平台获取Reallink失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20056, 500, "开放平台获取Reallink失败, errno: $errno, errmsg: $errmsg");
     }
 }
