@@ -44,11 +44,13 @@ class UtilsController extends Controller
         if (config("hklist.proxy.enable")) {
             $http = new Client([
                 RequestOptions::PROXY => config("hklist.proxy"),
-                RequestOptions::VERIFY => false
+                RequestOptions::VERIFY => false,
+                RequestOptions::TIMEOUT => 10000
             ]);
         } else {
             $http = new Client([
-                RequestOptions::VERIFY => false
+                RequestOptions::VERIFY => false,
+                RequestOptions::TIMEOUT => 10000
             ]);
         }
 
@@ -191,7 +193,7 @@ class UtilsController extends Controller
 
     public static function banAccount($actionName, $message, $id)
     {
-        if (str_contains($message, "网络异常") || str_contains($message, "服务器侧出现错误")) return;
+        if (str_contains($message, "网络异常") || str_contains($message, "服务器侧出现错误") || str_contains($message, "request exceeds deadline")) return;
         Account::query()
             ->find($id)
             ->update([
