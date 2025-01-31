@@ -17,10 +17,12 @@ class TokenController extends Controller
         $validator = Validator::make($request->all(), [
             "column" => ["nullable", "string", Rule::in(Token::$attrs)],
             "direction" => ["nullable", "string", Rule::in(["asc", "desc"])],
+            "keyword" => "nullable|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $data = Token::query()
+            ->whereLike("token", "%$request[keyword]%")
             ->withCount([
                 'records as total_count',
                 'records as today_count' => function ($query) {
