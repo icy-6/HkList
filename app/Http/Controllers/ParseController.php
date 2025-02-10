@@ -291,9 +291,12 @@ class ParseController extends Controller
             "pwd" => "nullable|string",
             "token" => "required|string",
             "vcode_str" => "nullable|string",
-            "vcode_input" => "nullable|string"
+            "vcode_input" => "nullable|string",
+            "download_folder" => "nullable|boolean",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        if ($request["download_folder"] && !config("hklist.parse.allow_folder")) return ResponseController::canNotDownloadFolder();
 
         // 每次请求不能超过多少个
         $max_once = config("hklist.limit.max_once");

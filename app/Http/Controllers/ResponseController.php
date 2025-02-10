@@ -312,4 +312,9 @@ class ResponseController extends Controller
     {
         return self::response(20056, 500, "开放平台获取Reallink失败, errno: $errno, errmsg: $errmsg");
     }
+
+    public static function canNotDownloadFolder()
+    {
+        return self::response(20057, 400, "服务器禁止解析文件夹");
+    }
 }
