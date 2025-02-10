@@ -24,6 +24,7 @@ class ParseConfigController extends Controller
             "user_agent" => "required|string",
             "parse_mode" => "required|numeric",
             "use_exploit" => "required|boolean",
+            "allow_folder" => "required|boolean"
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -36,6 +37,7 @@ class ParseConfigController extends Controller
             "HKLIST_USER_AGENT" => $request["user_agent"],
             "HKLIST_PARSE_MODE" => $request["parse_mode"],
             "HKLIST_USE_EXPLOIT" => $request["use_exploit"],
+            "HKLIST_ALLOW_FOLDER" => $request["allow_folder"],
         ]);
 
         return ResponseController::success();
