@@ -32,6 +32,11 @@ class AutoUpdate
         // 2.0.11 删除指纹表
         Schema::dropIfExists("fingerprints");
 
+        // 2.1.12
+        Schema::table("accounts", function (Blueprint $table) {
+            $table->enum("account_type", ["cookie", "enterprise_cookie", "enterprise_cookie_photography", "open_platform", "download_ticket"])->change();
+        });
+
         return $next($request);
     }
 }

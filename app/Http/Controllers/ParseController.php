@@ -138,15 +138,15 @@ class ParseController extends Controller
     {
         return match ($parse_mode ?? config("hklist.parse.parse_mode")) {
             // 正常模式
-            0, 1, 2 => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "超级会员"]]),
+            0, 1, 2 => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
-            3, 4 => ResponseController::success(["account_type" => "open_platform", "account_data" => ["vip_type" => "超级会员"]]),
+            3, 4 => ResponseController::success(["account_type" => ["open_platform"], "account_data" => ["vip_type" => "超级会员"]]),
             // 企业平台
-            5 => ResponseController::success(["account_type" => "enterprise_cookie", "account_data" => []]),
+            5 => ResponseController::success(["account_type" => ["enterprise_cookie", "enterprise_cookie_photography"], "account_data" => []]),
             // 下载卷接口
-            6 => ResponseController::success(["account_type" => "download_ticket", "account_data" => []]),
+            6 => ResponseController::success(["account_type" => ["download_ticket"], "account_data" => []]),
             // 漏洞接口
-            "exploit" => ResponseController::success(["account_type" => "cookie", "account_data" => ["vip_type" => "普通用户"]]),
+            "exploit" => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "普通用户"]]),
             default => ResponseController::unknownParseMode()
         };
     }
@@ -174,7 +174,7 @@ class ParseController extends Controller
 
         // 解析模式需要超级会员
         $needPro = false;
-        $account = Account::query()->where(["switch" => true, "account_type" => $accountTypeData["account_type"]]);
+        $account = Account::query()->where(["switch" => true])->whereIn("account_type", $accountTypeData["account_type"]);
         if ($province !== null) {
             if ($makeNew) {
                 $account = $account->whereNull("prov");
@@ -242,7 +242,7 @@ class ParseController extends Controller
         $account_type = $account["account_type"];
         $account_data = $account["account_data"];
 
-        if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
+        if ($account_type === "cookie" || $account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
             // 忽略普通用户
             if ($account_type === "cookie" && $account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
             $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));

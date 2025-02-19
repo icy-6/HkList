@@ -11,8 +11,9 @@ class Account extends Model
     public static array $account_types = [
         "cookie",
         "enterprise_cookie",
+        "enterprise_cookie_photography",
         "open_platform",
-        "download_ticket"
+        "download_ticket",
     ];
 
     public static array $attrs = [
