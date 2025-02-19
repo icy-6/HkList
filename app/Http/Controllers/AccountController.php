@@ -73,7 +73,7 @@ class AccountController extends Controller
         return ResponseController::success($result);
     }
 
-    private static function getEnterpriseInfo($cookie)
+    private static function getEnterpriseInfo($cookie, $isPhotography = false)
     {
         // 获取账户信息
         $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
@@ -82,7 +82,7 @@ class AccountController extends Controller
         $accountInfoData = $accountInfoData["data"];
 
         // 获取企业信息 (cid和到期时间)
-        $enterpriseInfo = BDWPApiController::getEnterpriseInfo($cookie);
+        $enterpriseInfo = BDWPApiController::getEnterpriseInfo($cookie, $isPhotography);
         $enterpriseInfoData = $enterpriseInfo->getData(true);
         if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
         $enterpriseInfoData = $enterpriseInfoData["data"];
@@ -92,14 +92,13 @@ class AccountController extends Controller
         if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
         $templateVariableInfoData = $templateVariableInfoData["data"];
 
-
         $expires_at = Carbon::createFromTimestamp($enterpriseInfoData["expires_at"], config("app.timezone"));
         $is_expired = $expires_at->isPast();
 
         return ResponseController::success([
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
-            "account_type" => "enterprise_cookie",
+            "account_type" => $isPhotography ? "enterprise_cookie_photography" : "enterprise_cookie",
             "account_data" => [
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
@@ -198,13 +197,14 @@ class AccountController extends Controller
     public function insert(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "open_platform", "download_ticket")]
+            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "enterprise_cookie_photography", "open_platform", "download_ticket")]
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         return match ($request["account_type"]) {
             "cookie" => self::insert_cookie($request),
             "enterprise_cookie" => self::insert_enterprise_cookie($request),
+            "enterprise_cookie_photography" => self::insert_enterprise_cookie($request, true),
             "open_platform" => self::insert_open_platform($request),
             "download_ticket" => self::insert_download_ticket($request),
         };
@@ -240,7 +240,7 @@ class AccountController extends Controller
         ]);
     }
 
-    private function insert_enterprise_cookie(Request $request)
+    private function insert_enterprise_cookie(Request $request, $isPhotography = false)
     {
         $validator = Validator::make($request->all(), [
             "account_data" => "required|array",
@@ -251,12 +251,12 @@ class AccountController extends Controller
 
         $have_repeat = false;
         foreach ($request["account_data"] as $accountDatum) {
-            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"]);
+            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"], $isPhotography);
             $accountInfoData = $accountInfo->getData(true);
             if ($accountInfoData["code"] !== 200) return $accountInfo;
             $accountInfoData = $accountInfoData["data"];
 
-            $account = Account::query()->firstWhere(["account_type" => "enterprise_cookie", "uk" => $accountInfoData["uk"]]);
+            $account = Account::query()->firstWhere(["account_type" => ($isPhotography ? "enterprise_cookie_photography" : "enterprise_cookie"), "uk" => $accountInfoData["uk"]]);
             if ($account) {
                 $have_repeat = true;
                 continue;
@@ -409,6 +409,7 @@ class AccountController extends Controller
             $data = match ($account["account_type"]) {
                 "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
                 "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"]),
+                "enterprise_cookie_photography" => self::getEnterpriseInfo($account_data["cookie"], true),
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
                 "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"])
             };
@@ -439,7 +440,7 @@ class AccountController extends Controller
             $account_data = $account["account_data"];
             $account_type = $account["account_type"];
 
-            if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
+            if ($account_type === "cookie" || $account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
                 ];

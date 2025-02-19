@@ -179,7 +179,7 @@ class BDWPApiController extends Controller
      *     "expires_at": 0
      * }
      */
-    public static function getEnterpriseInfo($cookie)
+    public static function getEnterpriseInfo($cookie, $isPhotography = false)
     {
         $res = UtilsController::sendRequest(
             "BDWPApiController::getEnterpriseInfo",
@@ -212,7 +212,14 @@ class BDWPApiController extends Controller
             return ResponseController::getEnterpriseInfoFailed(999, "账号可能不是企业账号,获取cid失败");
         }
 
-        $enterpriseInfoData = $enterpriseInfo["data"][0];
+        if ($isPhotography) {
+            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => str_contains($item["orgInfo"]["product_name"], "摄影版"))->first();
+            if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号不是摄影版账号");
+        } else {
+            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => !str_contains($item["orgInfo"]["product_name"], "摄影版"))->first();
+            if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号可能不是企业账号,获取cid失败");
+        }
+
         return ResponseController::success([
             "cid" => $enterpriseInfoData["cid"],
             "expires_at" => $enterpriseInfoData["orgInfo"]["product_endtime"],
