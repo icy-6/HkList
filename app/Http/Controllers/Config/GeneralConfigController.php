@@ -31,6 +31,7 @@ class GeneralConfigController extends Controller
             "name" => "required|string",
             "logo" => "required|string",
             "debug" => "required|boolean",
+            "disable_check_rand" => "required|boolean",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -45,7 +46,8 @@ class GeneralConfigController extends Controller
             "HKLIST_SHOW_HERO" => $request["show_hero"],
             "APP_NAME" => $request["name"],
             "APP_LOGO" => $request["logo"],
-            "APP_DEBUG" => $request["debug"]
+            "APP_DEBUG" => $request["debug"],
+            "HKLIST_DISABLE_CHECK_RAND" => $request["disable_check_rand"],
         ]);
 
         return ResponseController::success();
