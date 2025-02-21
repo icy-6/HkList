@@ -14,7 +14,6 @@ use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Record;
 use App\Models\Token;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -394,7 +393,7 @@ class ParseController extends Controller
                 // 插入记录
                 Record::query()->create([
                     "ip" => UtilsController::getIp($request),
-                    "fingerprint" => $request["rand2"],
+                    "fingerprint" => $request["rand2"] ?? "",
                     "fs_id" => $fs_id["id"],
                     "urls" => $item["urls"],
                     "ua" => $item["ua"],
