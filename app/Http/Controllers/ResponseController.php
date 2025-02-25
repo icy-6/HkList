@@ -270,7 +270,7 @@ class ResponseController extends Controller
 
     public static function transferFileFailed($errno, $errmsg)
     {
-        return self::response(20048, 500, "转存文件失败, errno: $errno, errmsg: $errmsg");
+        return self::response(20048, 500, "转存文件失败, errno: $errno, errmsg: $errmsg 请重试");
     }
 
     public static function getDlinkFailed($errno)
