@@ -10,6 +10,7 @@ use App\Http\Controllers\Parsers\V3Controller;
 use App\Http\Controllers\Parsers\V4Controller;
 use App\Http\Controllers\Parsers\V5Controller;
 use App\Http\Controllers\Parsers\V6Controller;
+use App\Http\Controllers\Parsers\V7Controller;
 use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Record;
@@ -144,6 +145,8 @@ class ParseController extends Controller
             5 => ResponseController::success(["account_type" => ["enterprise_cookie", "enterprise_cookie_photography"], "account_data" => []]),
             // 下载卷接口
             6 => ResponseController::success(["account_type" => ["download_ticket"], "account_data" => []]),
+            // 企业盘外
+            7 => ResponseController::success(["account_type" => ["enterprise_cookie_photography"], "account_data" => []]),
             // 漏洞接口
             "exploit" => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "普通用户"]]),
             default => ResponseController::unknownParseMode()
@@ -346,6 +349,7 @@ class ParseController extends Controller
             4 => V4Controller::request($request),
             5 => V5Controller::request($request),
             6 => V6Controller::request($request),
+            7 => V7Controller::request($request),
             default => ResponseController::unknownParseMode()
         };
         $responseData = $response->getData(true);
