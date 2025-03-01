@@ -198,13 +198,25 @@ class UtilsController extends Controller
             ->find($id)
             ->update([
                 "switch" => false,
-                "reason" => $message,
+                "reason" => $actionName . "|" . $message,
                 "last_use_at" => now()
             ]);
         UtilsController::sendMail(
             $actionName,
             "$message,账号ID: $id",
             "$message"
+        );
+    }
+
+    public static function checkResponse($response)
+    {
+        return (
+            !isset($response["data"]["error_code"]) ||
+            (
+                $response["data"]["error_code"] !== 31066 &&
+                $response["data"]["error_code"] !== 31362 &&
+                $response["data"]["error_code"] !== 31390
+            )
         );
     }
 }

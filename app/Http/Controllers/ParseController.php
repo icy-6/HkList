@@ -134,26 +134,22 @@ class ParseController extends Controller
         return BDWPApiController::getVcode();
     }
 
-    public static function getAccountType($parse_mode = null)
+    public static function getAccountType()
     {
-        return match ($parse_mode ?? config("hklist.parse.parse_mode")) {
+        return match (config("hklist.parse.parse_mode")) {
             // 正常模式
             0, 1, 2 => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
             3, 4 => ResponseController::success(["account_type" => ["open_platform"], "account_data" => ["vip_type" => "超级会员"]]),
             // 企业平台
-            5 => ResponseController::success(["account_type" => ["enterprise_cookie", "enterprise_cookie_photography"], "account_data" => []]),
+            5, 7 => ResponseController::success(["account_type" => ["enterprise_cookie", "enterprise_cookie_photography"], "account_data" => []]),
             // 下载卷接口
             6 => ResponseController::success(["account_type" => ["download_ticket"], "account_data" => []]),
-            // 企业盘外
-            7 => ResponseController::success(["account_type" => ["enterprise_cookie_photography"], "account_data" => []]),
-            // 漏洞接口
-            "exploit" => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "普通用户"]]),
             default => ResponseController::unknownParseMode()
         };
     }
 
-    public static function getRandomCookie(Request $request, $makeNew = false, $lessThan100M = false)
+    public static function getRandomCookie(Request $request, $makeNew = false)
     {
         $province = null;
         $limit_cn = config("hklist.limit.limit_cn");
@@ -169,7 +165,7 @@ class ParseController extends Controller
             if ($limit_prov) $province = $provData["province"];
         }
 
-        $accountType = self::getAccountType($lessThan100M ? "exploit" : null);
+        $accountType = self::getAccountType();
         $accountTypeData = $accountType->getData(true);
         if ($accountTypeData["code"] !== 200) return $accountType;
         $accountTypeData = $accountTypeData["data"];
@@ -189,31 +185,31 @@ class ParseController extends Controller
             $account = $account->where("account_data->" . $key, $value);
         }
 
-        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
-        if ($max_download_daily_pre_account > 0) {
-            $account = $account
-                ->leftJoin("records", function ($join) {
-                    $join->on("records.account_id", "=", "accounts.id")->whereDate("records.created_at", "=", now());
-                })
-                ->leftJoin("file_lists", function ($join) {
-                    $join->on("file_lists.fs_id", "=", "records.fs_id");
-                })
-                ->select("accounts.*", DB::raw('IFNULL(SUM(file_lists.size), 0) as total_size'))
-                ->groupBy([
-                    "accounts.id",
-                    "accounts.baidu_name",
-                    "accounts.uk",
-                    "accounts.account_type",
-                    "accounts.account_data",
-                    "accounts.switch",
-                    "accounts.reason",
-                    "accounts.prov",
-                    "accounts.created_at",
-                    "accounts.updated_at",
-                    "accounts.deleted_at",
-                ])
-                ->having('total_size', '<', $max_download_daily_pre_account);
-        }
+//        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
+//        if ($max_download_daily_pre_account > 0) {
+//            $account = $account
+//                ->leftJoin("records", function ($join) {
+//                    $join->on("records.account_id", "=", "accounts.id")->whereDate("records.created_at", "=", now());
+//                })
+//                ->leftJoin("file_lists", function ($join) {
+//                    $join->on("file_lists.fs_id", "=", "records.fs_id");
+//                })
+//                ->select("accounts.*", DB::raw('IFNULL(SUM(file_lists.size), 0) as total_size'))
+//                ->groupBy([
+//                    "accounts.id",
+//                    "accounts.baidu_name",
+//                    "accounts.uk",
+//                    "accounts.account_type",
+//                    "accounts.account_data",
+//                    "accounts.switch",
+//                    "accounts.reason",
+//                    "accounts.prov",
+//                    "accounts.created_at",
+//                    "accounts.updated_at",
+//                    "accounts.deleted_at",
+//                ])
+//                ->having('total_size', '<', $max_download_daily_pre_account);
+//        }
 
         $account = $account->inRandomOrder()->first();
 
@@ -221,7 +217,7 @@ class ParseController extends Controller
             // 判断存不存在 prov
             // 如果有那么就判断有没有还没有分配 prov 的账号
             if ($province !== null && !$makeNew) {
-                return self::getRandomCookie($request, true, $lessThan100M);
+                return self::getRandomCookie($request, true);
             } else {
                 return ResponseController::accountIsNotEnough();
             }
@@ -232,7 +228,7 @@ class ParseController extends Controller
         $isExpiredData = $isExpired->getData(true);
         $isExpiredData = $isExpiredData["data"];
         // 过期了获取一个新账号
-        if ($isExpiredData["isExpired"]) return self::getRandomCookie($request, false, $lessThan100M);
+        if ($isExpiredData["isExpired"]) return self::getRandomCookie($request, false);
 
         if ($makeNew) $account->update(["prov" => $province]);
 

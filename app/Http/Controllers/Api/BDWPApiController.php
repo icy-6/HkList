@@ -318,7 +318,7 @@ class BDWPApiController extends Controller
      *     }[]
      * }
      */
-    public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 1000, $order = "filename")
+    public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 100, $order = "filename")
     {
         $res = UtilsController::sendRequest(
             "BDWPApiController::getFileList",
@@ -342,7 +342,7 @@ class BDWPApiController extends Controller
                     "dir" => $dir,
                     "root" => $dir === "/" ? 1 : 0,
                     "page" => $page,
-                    "num" => $num,
+                    "num" => min($num, 100),
                     "order" => $order
                 ]
             ]
