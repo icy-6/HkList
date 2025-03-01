@@ -11,6 +11,7 @@ class Token extends Model
     public static array $attrs = [
         "id",
         "token",
+        "token_type",
         "count",
         "size",
         "day",
@@ -26,6 +27,7 @@ class Token extends Model
 
     protected $fillable = [
         "token",
+        "token_type",
         "count",
         "size",
         "day",

@@ -32,10 +32,17 @@ class AutoUpdate
         // 2.0.11 删除指纹表
         Schema::dropIfExists("fingerprints");
 
-        // 2.1.12
+        // 2.1.12 新增 enterprise_cookie_photography 账号类型
         Schema::table("accounts", function (Blueprint $table) {
             $table->enum("account_type", ["cookie", "enterprise_cookie", "enterprise_cookie_photography", "open_platform", "download_ticket"])->change();
         });
+
+        // 2.1.17 新增 daily 卡密类型
+        if (!Schema::hasColumn("tokens", "token_type")) {
+            Schema::table("tokens", function (Blueprint $table) {
+                $table->enum("token_type", ["normal", "daily"])->after("token")->default("normal");
+            });
+        }
 
         return $next($request);
     }

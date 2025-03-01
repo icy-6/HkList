@@ -64,6 +64,10 @@ class ParseController extends Controller
             if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
         }
 
+        if ($token["token_type"] === "daily") {
+            $recordsQuery = $recordsQuery->whereDate("records.created_at", "=", now());
+        }
+
         $records = $recordsQuery
             ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
