@@ -57,7 +57,8 @@ class TokenController extends Controller
                 "count" => "required|numeric",
                 "size" => "required|numeric",
                 "day" => "required|numeric",
-                "can_use_ip_count" => "required|numeric"
+                "can_use_ip_count" => "required|numeric",
+                "token_type" => ["required", Rule::in(["normal", "daily"])]
             ]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -66,6 +67,7 @@ class TokenController extends Controller
 
             Token::query()->create([
                 "token" => $request["token"],
+                "token_type" => $request["token_type"],
                 "count" => $request["count"],
                 "size" => $request["size"],
                 "day" => $request["day"],
@@ -82,6 +84,7 @@ class TokenController extends Controller
                 "size" => "required|numeric",
                 "day" => "required|numeric",
                 "can_use_ip_count" => "required|numeric",
+                "token_type" => ["required", Rule::in(["normal", "daily"])]
             ]);
             if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -93,6 +96,7 @@ class TokenController extends Controller
                 }
                 Token::query()->create([
                     "token" => $token,
+                    "token_type" => $request["token_type"],
                     "count" => $request["count"],
                     "size" => $request["size"],
                     "day" => $request["day"],
@@ -122,7 +126,8 @@ class TokenController extends Controller
             "ip" => "nullable|array",
             "ip.*" => "required|string|ip",
             "expires_at" => "nullable|date_format:Y-m-d H:i:s",
-            "token" => "nullable|string"
+            "token" => "nullable|string",
+            "token_type" => ["nullable", Rule::in(["normal", "daily"])]
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -134,6 +139,7 @@ class TokenController extends Controller
         if (isset($request["can_use_ip_count"])) $update["can_use_ip_count"] = $request["can_use_ip_count"];
         if (isset($request["ip"])) $update["ip"] = $request["ip"];
         if (isset($request["expires_at"])) $update["expires_at"] = $request["expires_at"];
+        if (isset($request["token_type"])) $update["token_type"] = $request["token_type"];
 
         if (count($request["id"]) <= 1) {
             if ($request["token"]) {
@@ -197,6 +203,11 @@ class TokenController extends Controller
                 ->where("ip", UtilsController::getIp($request))
                 ->whereDate("records.created_at", "=", now());
         }
+
+        if ($token["token_type"] === "daily") {
+            $recordsQuery = $recordsQuery->whereDate("records.created_at", now());
+        }
+
         $records = $recordsQuery->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
             ->selectRaw("SUM(size) as size,COUNT(*) as count")
             ->first();

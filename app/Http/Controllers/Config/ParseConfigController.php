@@ -49,10 +49,7 @@ class ParseConfigController extends Controller
         if ($parse["parser_server"] === "" || $parse["parser_password"] === "") return ResponseController::parserServerNotDefined();
         $res = ParserApiController::getAuthInfo($parse["parser_server"], $parse["parser_password"]);
         $resData = $res->getData(true);
-        if ($resData["code"] !== 200) {
-            if ($resData["data"]) return ResponseController::response($resData["data"]["code"], 400, $resData["data"]["message"]);
-            else return $res;
-        }
-        return ResponseController::success(["expires_at" => $resData["data"]["data"]["expires_at"]]);
+        if ($resData["code"] !== 200) return $res;
+        return ResponseController::success($resData["data"]);
     }
 }

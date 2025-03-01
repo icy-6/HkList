@@ -17,14 +17,17 @@ class ParserApiController extends Controller
     {
         $res = UtilsController::sendRequest(
             "ParserApiController::getAuthInfo",
-            "post",
+            "POST",
             "$parser_server/api/test_auth",
             ["json" => ["token" => $parser_password]]
         );
 
         $data = $res->getData(true);
-        if ($data["code"] !== 200) return $res;
+        if ($data["code"] !== 200) {
+            if ($data["data"]) return ResponseController::response($data["data"]["code"], 400, $data["data"]["message"], $data["data"]["data"]);
+            else return $res;
+        }
 
-        return ResponseController::success($data["data"]);
+        return ResponseController::success($data["data"]["data"]);
     }
 }

@@ -278,7 +278,7 @@ class ResponseController extends Controller
         return self::response(20049, 500, "获取Dlink失败, errno: $errno");
     }
 
-    public static function getTolConfigFailed($errno, $errmsg)
+    public static function getTplConfigFailed($errno, $errmsg)
     {
         return self::response(20050, 500, "获取tplconfig失败, errno: $errno, errmsg: $errmsg");
     }
