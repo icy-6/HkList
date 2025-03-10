@@ -454,7 +454,7 @@ class AccountController extends Controller
                 ];
             } else if ($account_type === "download_ticket") {
                 $data = [
-                    BDWPApiController::getAccountAPL("cookie", $account_data["save_cookie"]),
+                    BDWPApiController::getAccountAPL("cookie", $account_data["save_cookie"], $account_data["cid"]),
                     BDWPApiController::getAccountAPL("cookie", $account_data["download_cookie"])
                 ];
             } else {
