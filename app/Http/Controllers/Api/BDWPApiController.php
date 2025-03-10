@@ -237,7 +237,7 @@ class BDWPApiController extends Controller
      *      "user_operate_type": 0
      * }
      */
-    public static function getAccountAPL($accountType, $cookieOrAccessToken)
+    public static function getAccountAPL($accountType, $cookieOrAccessToken, $cid = null)
     {
         $req = [
             "headers" => ["User-Agent" => config("hklist.fake_user_agent")]
@@ -256,6 +256,7 @@ class BDWPApiController extends Controller
                 ]
             ]);
         }
+        if ($cid) $req["query"]["cid"] = $cid;
 
         $res = UtilsController::sendRequest(
             "BDWPApiController::getAccountAPL",

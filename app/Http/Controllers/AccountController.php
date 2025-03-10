@@ -440,9 +440,13 @@ class AccountController extends Controller
             $account_data = $account["account_data"];
             $account_type = $account["account_type"];
 
-            if ($account_type === "cookie" || $account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
+            if ($account_type === "cookie") {
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
+                ];
+            } else if ($account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
+                $data = [
+                    BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
                 ];
             } else if ($account_type === "open_platform") {
                 $data = [
