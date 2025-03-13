@@ -213,10 +213,10 @@ class BDWPApiController extends Controller
         }
 
         if ($isPhotography) {
-            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => str_contains($item["orgInfo"]["product_name"], "摄影版"))->first();
+            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => str_contains($item["orgInfo"]["name"], "摄影版"))->first();
             if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号不是摄影版账号");
         } else {
-            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => !str_contains($item["orgInfo"]["product_name"], "摄影版"))->first();
+            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => !str_contains($item["orgInfo"]["name"], "摄影版"))->first();
             if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号可能不是企业账号,获取cid失败");
         }
 
