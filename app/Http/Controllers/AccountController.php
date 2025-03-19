@@ -262,6 +262,8 @@ class AccountController extends Controller
                 continue;
             }
 
+            if ($accountDatum["dlink_cookie"]) $accountInfoData["account_data"]["dlink_cookie"] = $accountDatum["dlink_cookie"];
+
             Account::query()->create($accountInfoData);
         }
 
@@ -416,6 +418,9 @@ class AccountController extends Controller
             $update = $data->getData(true);
             if ($update["code"] !== 200) return $data;
             $update = $update["data"];
+            if ($account["account_data"]["dlink_cookie"]) {
+                $update["account_data"]["dlink_cookie"] = $account["account_data"]["dlink_cookie"];
+            }
 
             $account->update($update);
         }
@@ -448,6 +453,9 @@ class AccountController extends Controller
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
                 ];
+                if ($account_data["dlink_cookie"]) {
+                    $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
+                }
             } else if ($account_type === "open_platform") {
                 $data = [
                     BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
