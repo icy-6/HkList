@@ -73,7 +73,7 @@ class AccountController extends Controller
         return ResponseController::success($result);
     }
 
-    private static function getEnterpriseInfo($cookie, $isPhotography = false)
+    private static function getEnterpriseInfo($cookie, $isPhotography = false, $dlink_cookie = null)
     {
         // 获取账户信息
         $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
@@ -86,6 +86,12 @@ class AccountController extends Controller
         $enterpriseInfoData = $enterpriseInfo->getData(true);
         if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
         $enterpriseInfoData = $enterpriseInfoData["data"];
+
+        if ($dlink_cookie) {
+            $dlinkCookieInfo = BDWPApiController::getAccountInfo("cookie", $dlink_cookie);
+            $dlinkCookieInfoData = $dlinkCookieInfo->getData(true);
+            if ($dlinkCookieInfoData["code"] !== 200) return $dlinkCookieInfo;
+        }
 
         $templateVariableInfo = BDWPApiController::getTemplateVariable($cookie);
         $templateVariableInfoData = $templateVariableInfo->getData(true);
@@ -103,7 +109,8 @@ class AccountController extends Controller
                 "cookie" => $cookie,
                 "cid" => $enterpriseInfoData["cid"],
                 "expires_at" => $expires_at->format("Y-m-d H:i:s"),
-                "bdstoken" => $templateVariableInfoData["bdstoken"]
+                "bdstoken" => $templateVariableInfoData["bdstoken"],
+                "dlink_cookie" => $dlink_cookie
             ],
             "switch" => !$is_expired,
             "reason" => $is_expired ? "企业套餐已过期" : "",
@@ -251,7 +258,7 @@ class AccountController extends Controller
 
         $have_repeat = false;
         foreach ($request["account_data"] as $accountDatum) {
-            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"], $isPhotography);
+            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"], $isPhotography, $accountDatum["dlink_cookie"] ?? null);
             $accountInfoData = $accountInfo->getData(true);
             if ($accountInfoData["code"] !== 200) return $accountInfo;
             $accountInfoData = $accountInfoData["data"];
@@ -261,8 +268,6 @@ class AccountController extends Controller
                 $have_repeat = true;
                 continue;
             }
-
-            if ($accountDatum["dlink_cookie"]) $accountInfoData["account_data"]["dlink_cookie"] = $accountDatum["dlink_cookie"];
 
             Account::query()->create($accountInfoData);
         }
@@ -418,9 +423,6 @@ class AccountController extends Controller
             $update = $data->getData(true);
             if ($update["code"] !== 200) return $data;
             $update = $update["data"];
-            if ($account["account_data"]["dlink_cookie"]) {
-                $update["account_data"]["dlink_cookie"] = $account["account_data"]["dlink_cookie"];
-            }
 
             $account->update($update);
         }
@@ -453,9 +455,7 @@ class AccountController extends Controller
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
                 ];
-                if ($account_data["dlink_cookie"]) {
-                    $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
-                }
+                if (isset($account_data["dlink_cookie"])) $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
             } else if ($account_type === "open_platform") {
                 $data = [
                     BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
