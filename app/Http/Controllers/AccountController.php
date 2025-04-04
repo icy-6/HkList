@@ -55,13 +55,15 @@ class AccountController extends Controller
         if ($vipInfoData["code"] !== 200) return $vipInfo;
         $vipInfoData = $vipInfoData["data"];
 
+        $expires_at = Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"));
+
         $result = [
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => $accountType,
             "account_data" => [
                 "vip_type" => $vipInfoData["vip_type"],
-                "expires_at" => Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s")
+                "expires_at" => $expires_at->format("Y-m-d H:i:s")
             ],
             "switch" => 1,
             "reason" => "",
@@ -71,51 +73,6 @@ class AccountController extends Controller
         if ($accountType === "cookie") $result["account_data"]["cookie"] = $cookieOrAccessToken;
 
         return ResponseController::success($result);
-    }
-
-    private static function getEnterpriseInfo($cookie, $isPhotography = false, $dlink_cookie = null)
-    {
-        // 获取账户信息
-        $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
-        $accountInfoData = $accountInfo->getData(true);
-        if ($accountInfoData["code"] !== 200) return $accountInfo;
-        $accountInfoData = $accountInfoData["data"];
-
-        // 获取企业信息 (cid和到期时间)
-        $enterpriseInfo = BDWPApiController::getEnterpriseInfo($cookie, $isPhotography);
-        $enterpriseInfoData = $enterpriseInfo->getData(true);
-        if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
-        $enterpriseInfoData = $enterpriseInfoData["data"];
-
-        if ($dlink_cookie) {
-            $dlinkCookieInfo = BDWPApiController::getAccountInfo("cookie", $dlink_cookie);
-            $dlinkCookieInfoData = $dlinkCookieInfo->getData(true);
-            if ($dlinkCookieInfoData["code"] !== 200) return $dlinkCookieInfo;
-        }
-
-        $templateVariableInfo = BDWPApiController::getTemplateVariable($cookie);
-        $templateVariableInfoData = $templateVariableInfo->getData(true);
-        if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
-        $templateVariableInfoData = $templateVariableInfoData["data"];
-
-        $expires_at = Carbon::createFromTimestamp($enterpriseInfoData["expires_at"], config("app.timezone"));
-        $is_expired = $expires_at->isPast();
-
-        return ResponseController::success([
-            "baidu_name" => $accountInfoData["baidu_name"],
-            "uk" => $accountInfoData["uk"],
-            "account_type" => $isPhotography ? "enterprise_cookie_photography" : "enterprise_cookie",
-            "account_data" => [
-                "cookie" => $cookie,
-                "cid" => $enterpriseInfoData["cid"],
-                "expires_at" => $expires_at->format("Y-m-d H:i:s"),
-                "bdstoken" => $templateVariableInfoData["bdstoken"],
-                "dlink_cookie" => $dlink_cookie
-            ],
-            "switch" => !$is_expired,
-            "reason" => $is_expired ? "企业套餐已过期" : "",
-            "prov" => null
-        ]);
     }
 
     private static function getOpenPlatformInfo($refresh_token)
@@ -148,32 +105,101 @@ class AccountController extends Controller
         ]);
     }
 
-    private static function getDownLoadTicketInfo($surl, $pwd, $dir, $save_cookie, $download_cookie)
+    private static function getEnterpriseInfo($cookie, $cid, $dlink_cookie = null)
+    {
+        // 获取账户信息
+        $accountInfo = BDWPApiController::getAccountInfo("cookie", $cookie);
+        $accountInfoData = $accountInfo->getData(true);
+        if ($accountInfoData["code"] !== 200) return $accountInfo;
+        $accountInfoData = $accountInfoData["data"];
+
+        // 获取企业信息 (cid和到期时间)
+        $enterpriseInfo = BDWPApiController::getEnterpriseInfo($cookie);
+        $enterpriseInfoData = $enterpriseInfo->getData(true);
+        if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
+        $enterpriseInfoData = $enterpriseInfoData["data"];
+        $find = collect($enterpriseInfoData)->filter(fn($item) => $item["cid"] === $cid)->first();
+        if (!$find) return ResponseController::cidWrong();
+
+        if ($dlink_cookie) {
+            $dlinkCookieInfo = BDWPApiController::getAccountInfo("cookie", $dlink_cookie);
+            $dlinkCookieInfoData = $dlinkCookieInfo->getData(true);
+            if ($dlinkCookieInfoData["code"] !== 200) return $dlinkCookieInfo;
+        }
+
+        $templateVariableInfo = BDWPApiController::getTemplateVariable($cookie);
+        $templateVariableInfoData = $templateVariableInfo->getData(true);
+        if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
+        $templateVariableInfoData = $templateVariableInfoData["data"];
+
+        $expires_at = Carbon::createFromTimestamp($find["product_endtime"], config("app.timezone"));
+        $is_expired = $expires_at->isPast();
+
+        return ResponseController::success([
+            "baidu_name" => $accountInfoData["baidu_name"],
+            "uk" => $accountInfoData["uk"],
+            "account_type" => "enterprise_cookie",
+            "account_data" => [
+                "cookie" => $cookie,
+                "cid" => $cid,
+                "expires_at" => $expires_at->format("Y-m-d H:i:s"),
+                "bdstoken" => $templateVariableInfoData["bdstoken"],
+                "dlink_cookie" => $dlink_cookie
+            ],
+            "switch" => !$is_expired,
+            "reason" => $is_expired ? "企业套餐已过期" : "",
+            "prov" => null
+        ]);
+    }
+
+    private static function getDownLoadTicketInfo($surl, $pwd, $dir, $save_cookie, $cid, $download_cookie)
     {
         // 只需检查cookie是否有效
         $saveAccountInfo = BDWPApiController::getAccountInfo("cookie", $save_cookie);
         $saveAccountInfoData = $saveAccountInfo->getData(true);
-        if ($saveAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed(999, "save_cookie:" . $saveAccountInfoData["message"]);
+        if ($saveAccountInfoData["code"] !== 200) {
+            $saveAccountInfoData["message"] = "save_cookie:" . $saveAccountInfoData["message"];
+            $saveAccountInfo->setData($saveAccountInfoData);
+            return $saveAccountInfo;
+        }
 
         // 获取企业信息 (cid和到期时间)
         $enterpriseInfo = BDWPApiController::getEnterpriseInfo($save_cookie);
         $enterpriseInfoData = $enterpriseInfo->getData(true);
-        if ($enterpriseInfoData["code"] !== 200) return $enterpriseInfo;
+        if ($enterpriseInfoData["code"] !== 200) {
+            $enterpriseInfoData["message"] = "save_cookie:" . $enterpriseInfoData["message"];
+            $enterpriseInfo->setData($enterpriseInfoData);
+            return $enterpriseInfo;
+        }
         $enterpriseInfoData = $enterpriseInfoData["data"];
+        $find = collect($enterpriseInfoData)->filter(fn($item) => $item["cid"] === $cid)->first();
+        if (!$find) return ResponseController::cidWrong();
 
         $saveTemplateVariableInfo = BDWPApiController::getTemplateVariable($save_cookie);
         $saveTemplateVariableInfoData = $saveTemplateVariableInfo->getData(true);
-        if ($saveTemplateVariableInfoData["code"] !== 200) return $saveTemplateVariableInfo;
+        if ($saveTemplateVariableInfoData["code"] !== 200) {
+            $saveTemplateVariableInfoData["message"] = "save_cookie:" . $saveTemplateVariableInfoData["message"];
+            $saveTemplateVariableInfo->setData($saveTemplateVariableInfoData);
+            return $saveTemplateVariableInfo;
+        }
         $saveTemplateVariableInfoData = $saveTemplateVariableInfoData["data"];
 
         $downloadTemplateVariableInfo = BDWPApiController::getTemplateVariable($download_cookie);
         $downloadTemplateVariableInfoData = $downloadTemplateVariableInfo->getData(true);
-        if ($downloadTemplateVariableInfoData["code"] !== 200) return $downloadTemplateVariableInfo;
+        if ($downloadTemplateVariableInfoData["code"] !== 200) {
+            $downloadTemplateVariableInfoData["message"] = "download_cookie:" . $downloadTemplateVariableInfoData["message"];
+            $downloadTemplateVariableInfo->setData($downloadTemplateVariableInfoData);
+            return $downloadTemplateVariableInfo;
+        }
         $downloadTemplateVariableInfoData = $downloadTemplateVariableInfoData["data"];
 
         $downloadAccountInfo = BDWPApiController::getAccountInfo("cookie", $download_cookie);
         $downloadAccountInfoData = $downloadAccountInfo->getData(true);
-        if ($downloadAccountInfoData["code"] !== 200) return ResponseController::getAccountInfoFailed(999, "download_cookie:" . $downloadAccountInfoData["message"]);
+        if ($downloadAccountInfoData["code"] !== 200) {
+            $downloadAccountInfoData["message"] = "download_cookie:" . $downloadAccountInfoData["message"];
+            $downloadAccountInfo->setData($downloadAccountInfoData);
+            return $downloadAccountInfo;
+        }
         $downloadAccountInfoData = $downloadAccountInfoData["data"];
 
         // 检查链接是否有效
@@ -189,7 +215,7 @@ class AccountController extends Controller
                 "surl" => $surl,
                 "pwd" => $pwd,
                 "dir" => $dir,
-                "cid" => $enterpriseInfoData["cid"],
+                "cid" => $cid,
                 "save_cookie" => $save_cookie,
                 "save_bdstoken" => $saveTemplateVariableInfoData["bdstoken"],
                 "download_cookie" => $download_cookie,
@@ -204,15 +230,14 @@ class AccountController extends Controller
     public function insert(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            "account_type" => ["required", Rule::in("cookie", "enterprise_cookie", "enterprise_cookie_photography", "open_platform", "download_ticket")]
+            "account_type" => ["required", Rule::in(Account::$account_types)]
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         return match ($request["account_type"]) {
             "cookie" => self::insert_cookie($request),
-            "enterprise_cookie" => self::insert_enterprise_cookie($request),
-            "enterprise_cookie_photography" => self::insert_enterprise_cookie($request, true),
             "open_platform" => self::insert_open_platform($request),
+            "enterprise_cookie" => self::insert_enterprise_cookie($request),
             "download_ticket" => self::insert_download_ticket($request),
         };
     }
@@ -234,36 +259,6 @@ class AccountController extends Controller
             $accountInfoData = $accountInfoData["data"];
 
             $account = Account::query()->firstWhere(["account_type" => "cookie", "uk" => $accountInfoData["uk"]]);
-            if ($account) {
-                $have_repeat = true;
-                continue;
-            }
-
-            Account::query()->create($accountInfoData);
-        }
-
-        return ResponseController::success([
-            "have_repeat" => $have_repeat
-        ]);
-    }
-
-    private function insert_enterprise_cookie(Request $request, $isPhotography = false)
-    {
-        $validator = Validator::make($request->all(), [
-            "account_data" => "required|array",
-            "account_data.*" => "required|array",
-            "account_data.*.cookie" => "required|string",
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
-
-        $have_repeat = false;
-        foreach ($request["account_data"] as $accountDatum) {
-            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"], $isPhotography, $accountDatum["dlink_cookie"] ?? null);
-            $accountInfoData = $accountInfo->getData(true);
-            if ($accountInfoData["code"] !== 200) return $accountInfo;
-            $accountInfoData = $accountInfoData["data"];
-
-            $account = Account::query()->firstWhere(["account_type" => ($isPhotography ? "enterprise_cookie_photography" : "enterprise_cookie"), "uk" => $accountInfoData["uk"]]);
             if ($account) {
                 $have_repeat = true;
                 continue;
@@ -307,6 +302,38 @@ class AccountController extends Controller
         ]);
     }
 
+    private function insert_enterprise_cookie(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "account_data" => "required|array",
+            "account_data.*" => "required|array",
+            "account_data.*.cookie" => "required|string",
+            "account_data.*.cid" => "required|numeric",
+            "account_data.*.dlink_cookie" => "nullable|string"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $have_repeat = false;
+        foreach ($request["account_data"] as $accountDatum) {
+            $accountInfo = self::getEnterpriseInfo($accountDatum["cookie"], $accountDatum["cid"], $accountDatum["dlink_cookie"] ?? null);
+            $accountInfoData = $accountInfo->getData(true);
+            if ($accountInfoData["code"] !== 200) return $accountInfo;
+            $accountInfoData = $accountInfoData["data"];
+
+            $account = Account::query()->firstWhere(["account_type" => "enterprise_cookie", "uk" => $accountInfoData["uk"]]);
+            if ($account) {
+                $have_repeat = true;
+                continue;
+            }
+
+            Account::query()->create($accountInfoData);
+        }
+
+        return ResponseController::success([
+            "have_repeat" => $have_repeat
+        ]);
+    }
+
     private function insert_download_ticket(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -316,13 +343,21 @@ class AccountController extends Controller
             "account_data.*.pwd" => "required|string",
             "account_data.*.dir" => "required|string",
             "account_data.*.save_cookie" => "required|string",
+            "account_data.*.cid" => "required|numeric",
             "account_data.*.download_cookie" => "required|string",
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         $have_repeat = false;
         foreach ($request["account_data"] as $accountDatum) {
-            $accountInfo = self::getDownLoadTicketInfo($accountDatum["surl"], $accountDatum["pwd"], $accountDatum["dir"], $accountDatum["save_cookie"], $accountDatum["download_cookie"]);
+            $accountInfo = self::getDownLoadTicketInfo(
+                $accountDatum["surl"],
+                $accountDatum["pwd"],
+                $accountDatum["dir"],
+                $accountDatum["save_cookie"],
+                $accountDatum["cid"],
+                $accountDatum["download_cookie"]
+            );
             $accountInfoData = $accountInfo->getData(true);
             if ($accountInfoData["code"] !== 200) return $accountInfo;
             $accountInfoData = $accountInfoData["data"];
@@ -415,10 +450,9 @@ class AccountController extends Controller
             $account_data = $account["account_data"];
             $data = match ($account["account_type"]) {
                 "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
-                "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"]),
-                "enterprise_cookie_photography" => self::getEnterpriseInfo($account_data["cookie"], true),
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
-                "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["download_cookie"])
+                "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"], $account_data["cid"]),
+                "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["cid"], $account_data["download_cookie"])
             };
             $update = $data->getData(true);
             if ($update["code"] !== 200) return $data;
@@ -451,7 +485,7 @@ class AccountController extends Controller
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
                 ];
-            } else if ($account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
+            } else if ($account_type === "enterprise_cookie") {
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
                 ];
@@ -477,6 +511,15 @@ class AccountController extends Controller
         }
 
         return ResponseController::success($res);
+    }
+
+    public function getCidInfo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            "cookie" => "required|string"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        return BDWPApiController::getEnterpriseInfo($request["cookie"]);
     }
 
     public function delete(Request $request)

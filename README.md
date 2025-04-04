@@ -34,7 +34,7 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 - 5.在软件商店内打开 `php` 并在安装扩展中安装 `sg15` 加密组件
 - 6.访问页面安装
 
-### Docker安装
+### Docker 安装
 
 [Docker Hub](https://hub.docker.com/r/huankong233/hklist)
 
@@ -46,11 +46,11 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 
 ### 前台
 
-[HKList-frontend](https://github.com/huankong233/HkList-frontend)
+[HKList-frontend](https://github.com/HkList/HkList-frontend)
 
 ### 后台
 
-[HKList](https://github.com/huankong233/HkList)
+[HKList](https://github.com/HkList/HkList)
 
 ## 感谢
 
@@ -63,4 +63,5 @@ USDT-TRC20: `TJK9FLAxqQmYU583Qjtof35MpJEu8Xq8iF`
 
 ### 贡献者
 
-![contribs](https://contrib.rocks/image?repo=huankong233/HkList)
+![contribs](https://contrib.rocks/image?repo=HkList/HkList)
+

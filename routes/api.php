@@ -41,6 +41,7 @@ Route::middleware(["CheckRand", "AutoUpdate"])->group(function () {
                     Route::post("/update_info", [AccountController::class, "updateInfo"]);
                     Route::post("/update_data", [AccountController::class, "updateData"]);
                     Route::post("/check_ban_status", [AccountController::class, "checkBanStatus"]);
+                    Route::post("/get_cid_info", [AccountController::class, "getCidInfo"]);
                     Route::patch("/", [AccountController::class, "update"]);
                     Route::delete("/", [AccountController::class, "delete"]);
                 });

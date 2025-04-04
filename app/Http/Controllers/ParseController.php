@@ -145,7 +145,7 @@ class ParseController extends Controller
             // 开放平台
             3, 4 => ResponseController::success(["account_type" => ["open_platform"], "account_data" => ["vip_type" => "超级会员"]]),
             // 企业平台
-            5, 7 => ResponseController::success(["account_type" => ["enterprise_cookie", "enterprise_cookie_photography"], "account_data" => []]),
+            5, 7 => ResponseController::success(["account_type" => ["enterprise_cookie"], "account_data" => []]),
             // 下载卷接口
             6 => ResponseController::success(["account_type" => ["download_ticket"], "account_data" => []]),
             default => ResponseController::unknownParseMode()
@@ -243,7 +243,7 @@ class ParseController extends Controller
         $account_type = $account["account_type"];
         $account_data = $account["account_data"];
 
-        if ($account_type === "cookie" || $account_type === "enterprise_cookie" || $account_type === "enterprise_cookie_photography") {
+        if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
             // 忽略普通用户
             if ($account_type === "cookie" && $account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
             $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
@@ -375,8 +375,7 @@ class ParseController extends Controller
                 if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             }
 
-            $item["urls"] = array_filter($item["urls"], fn($url) => !str_contains($url, "ant.baidu.com"));
-            $item["urls"] = array_values($item["urls"]);
+            $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"))->values()->toArray();
 
             Account::query()
                 ->find($item["account_id"])
