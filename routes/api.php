@@ -7,9 +7,9 @@ use App\Http\Controllers\Config\GeneralConfigController;
 use App\Http\Controllers\Config\LimitConfigController;
 use App\Http\Controllers\Config\MailConfigController;
 use App\Http\Controllers\Config\ParseConfigController;
+use App\Http\Controllers\Config\ProxyConfigController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\ParseController;
-use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\RecordController;
 use App\Http\Controllers\TokenController;
 use Illuminate\Support\Facades\Route;
@@ -83,9 +83,9 @@ Route::middleware(["CheckRand", "AutoUpdate"])->group(function () {
                         Route::post("/send_test_mail", [MailConfigController::class, "sendTestMail"]);
                     });
                     Route::prefix("/proxy")->group(function () {
-                        Route::get("/", [ProxyController::class, "getConfig"]);
-                        Route::patch("/", [ProxyController::class, "updateConfig"]);
-                        Route::post("/test_proxy", [ProxyController::class, "testProxy"]);
+                        Route::get("/", [ProxyConfigController::class, "getConfig"]);
+                        Route::patch("/", [ProxyConfigController::class, "updateConfig"]);
+                        Route::post("/test_proxy", [ProxyConfigController::class, "testProxy"]);
                     });
                 });
             });
