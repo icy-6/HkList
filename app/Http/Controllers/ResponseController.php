@@ -322,4 +322,9 @@ class ResponseController extends Controller
     {
         return self::response(20058, 500, "导入文件失败, errno: $errno, errmsg: $errmsg");
     }
+
+    public static function ocrNotFound()
+    {
+        return self::response(20059, 500, "未找到ocr服务");
+    }
 }
