@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Account;
 use Closure;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
@@ -43,6 +44,12 @@ class AutoUpdate
                 $table->enum("token_type", ["normal", "daily"])->after("token")->default("normal");
             });
         }
+
+        // 2.1.26 移除 enterprise_cookie_photography 账号类型
+        Account::withTrashed()->where("account_type", "enterprise_cookie_photography")->update(["account_type" => "enterprise_cookie"]);
+        Schema::table("accounts", function (Blueprint $table) {
+            $table->enum("account_type", ["cookie", "enterprise_cookie", "open_platform", "download_ticket"])->change();
+        });
 
         return $next($request);
     }

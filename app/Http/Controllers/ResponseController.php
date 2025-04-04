@@ -327,4 +327,9 @@ class ResponseController extends Controller
     {
         return self::response(20059, 500, "未找到ocr服务");
     }
+
+    public static function cidWrong()
+    {
+        return self::response(20060, 400, "cid错误");
+    }
 }

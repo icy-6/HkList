@@ -173,13 +173,7 @@ class BDWPApiController extends Controller
         ]);
     }
 
-    /**
-     * {
-     *     "cid": 0,
-     *     "expires_at": 0
-     * }
-     */
-    public static function getEnterpriseInfo($cookie, $isPhotography = false)
+    public static function getEnterpriseInfo($cookie)
     {
         $res = UtilsController::sendRequest(
             "BDWPApiController::getEnterpriseInfo",
@@ -212,18 +206,15 @@ class BDWPApiController extends Controller
             return ResponseController::getEnterpriseInfoFailed(999, "账号可能不是企业账号,获取cid失败");
         }
 
-        if ($isPhotography) {
-            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => str_contains($item["orgInfo"]["name"], "摄影版"))->first();
-            if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号不是摄影版账号");
-        } else {
-            $enterpriseInfoData = collect($enterpriseInfo["data"])->filter(fn($item) => !str_contains($item["orgInfo"]["name"], "摄影版"))->first();
-            if (!$enterpriseInfoData) return ResponseController::getEnterpriseInfoFailed("999", "账号可能不是企业账号,获取cid失败");
-        }
-
-        return ResponseController::success([
-            "cid" => $enterpriseInfoData["cid"],
-            "expires_at" => $enterpriseInfoData["orgInfo"]["product_endtime"],
+        $orgInfo = collect($enterpriseInfo["data"])->map(fn($item) => [
+            "cid" => $item["cid"],
+            "org_name" => $item["orgInfo"]["name"],
+            "product_name" => $item["orgInfo"]["product_name"],
+            "product_starttime" => $item["orgInfo"]["product_starttime"],
+            "product_endtime" => $item["orgInfo"]["product_endtime"],
         ]);
+
+        return ResponseController::success($orgInfo);
     }
 
     /**
