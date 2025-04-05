@@ -16,4 +16,6 @@ echo "启动更新程序"
 cd $www_path || exit
 php artisan app:check-app-status
 
+chmod +x $www_path/ocr
+
 exec "$@"

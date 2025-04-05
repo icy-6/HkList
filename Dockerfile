@@ -8,11 +8,12 @@ COPY . /app
 
 # 删除vendor文件减小体积
 RUN rm vendor.zip
+RUN rm ocr.exe
 
 # 开始构建
 RUN composer install --optimize-autoloader --no-interaction --no-progress
 
-FROM trafex/php-nginx:3.6.0
+FROM huankong233/php-nginx:latest
 
 USER root
 
