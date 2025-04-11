@@ -449,6 +449,31 @@ class BDWPApiController extends Controller
         ]);
     }
 
+    public static function getVcodeDDDDCOR()
+    {
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getVcodeDDDDCOR",
+            "get",
+            config("hklist.parse.ddddocr_server")
+        );
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["code"]) ||
+            $response["code"] !== 200
+        ) {
+            return ResponseController::getVcodeFailed(($response["code"] ?? "未知") . ($response["message"] ?? "未知"));
+        }
+        
+        return ResponseController::success([
+            "vcode_str" => $response["data"]["vcode_str"],
+            "vcode_input" => $response["data"]["vcode_input"],
+        ]);
+    }
+
     /**
      * errno: 9013/12 风控
      * errno: 2 参数过期
