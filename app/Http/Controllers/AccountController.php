@@ -451,7 +451,7 @@ class AccountController extends Controller
             $data = match ($account["account_type"]) {
                 "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
-                "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"], $account_data["cid"]),
+                "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"], $account_data["cid"], $account_data["dlink_cookie"] ?? null),
                 "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["cid"], $account_data["download_cookie"])
             };
             $update = $data->getData(true);
