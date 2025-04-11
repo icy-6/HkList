@@ -8,7 +8,6 @@ COPY . /app
 
 # 删除vendor文件减小体积
 RUN rm vendor.zip
-RUN rm ocr.exe
 
 # 开始构建
 RUN composer install --optimize-autoloader --no-interaction --no-progress
@@ -31,7 +30,7 @@ RUN apk add --no-cache openssl php83-pdo php83-pdo_mysql eudev-libs
 # 补全环境
 RUN apk update && \
     apk upgrade && \
-    apk add tzdata && \
+    apk add --no-cache tzdata && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
