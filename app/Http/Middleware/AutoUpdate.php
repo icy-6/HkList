@@ -51,6 +51,13 @@ class AutoUpdate
             $table->enum("account_type", ["cookie", "enterprise_cookie", "open_platform", "download_ticket"])->change();
         });
 
+        // 2.1.30 恢复账号单日解析量上限
+        if (!Schema::hasColumn("accounts", "total_size")) {
+            Schema::table("accounts", function (Blueprint $table) {
+                $table->unsignedBigInteger("total_size")->after("prov")->default(0);
+            });
+        }
+
         return $next($request);
     }
 }

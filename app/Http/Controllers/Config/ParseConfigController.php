@@ -26,12 +26,14 @@ class ParseConfigController extends Controller
             "use_exploit" => "required|boolean",
             "allow_folder" => "required|boolean",
             "ddddocr_server" => "nullable|string",
+            "proxy_host" => "nullable|string",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         if (str_ends_with($request["parser_server"] ?? "", "/")) $request["parser_server"] = substr($request["parser_server"], 0, -1);
         if (str_ends_with($request["ddddocr_server"] ?? "", "/")) $request["ddddocr_server"] = substr($request["ddddocr_server"], 0, -1);
+        if (str_ends_with($request["proxy_host"] ?? "", "/")) $request["proxy_host"] = substr($request["proxy_host"], 0, -1);
 
         UtilsController::updateEnv([
             "HKLIST_PARSER_SERVER" => $request["parser_server"] ?? "",
@@ -41,6 +43,7 @@ class ParseConfigController extends Controller
             "HKLIST_USE_EXPLOIT" => $request["use_exploit"],
             "HKLIST_ALLOW_FOLDER" => $request["allow_folder"],
             "HKLIST_DDDDOCR_SERVER" => $request["ddddocr_server"] ?? "",
+            "HKLIST_PROXY_HOST" => $request["proxy_host"] ?? "",
         ]);
 
         return ResponseController::success();

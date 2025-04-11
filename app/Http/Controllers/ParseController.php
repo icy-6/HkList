@@ -188,31 +188,8 @@ class ParseController extends Controller
             $account = $account->where("account_data->" . $key, $value);
         }
 
-//        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
-//        if ($max_download_daily_pre_account > 0) {
-//            $account = $account
-//                ->leftJoin("records", function ($join) {
-//                    $join->on("records.account_id", "=", "accounts.id")->whereDate("records.created_at", "=", now());
-//                })
-//                ->leftJoin("file_lists", function ($join) {
-//                    $join->on("file_lists.fs_id", "=", "records.fs_id");
-//                })
-//                ->select("accounts.*", DB::raw('IFNULL(SUM(file_lists.size), 0) as total_size'))
-//                ->groupBy([
-//                    "accounts.id",
-//                    "accounts.baidu_name",
-//                    "accounts.uk",
-//                    "accounts.account_type",
-//                    "accounts.account_data",
-//                    "accounts.switch",
-//                    "accounts.reason",
-//                    "accounts.prov",
-//                    "accounts.created_at",
-//                    "accounts.updated_at",
-//                    "accounts.deleted_at",
-//                ])
-//                ->having('total_size', '<', $max_download_daily_pre_account);
-//        }
+        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
+        if ($max_download_daily_pre_account > 0) $account = $account->where('total_size', '<', $max_download_daily_pre_account);
 
         $account = $account->inRandomOrder()->first();
 
@@ -367,36 +344,42 @@ class ParseController extends Controller
             if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
         }
 
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token) {
+        $proxy_host = config("hklist.parse.proxy_host");
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host) {
             if ($item["message"] !== "请求成功") return $item;
 
             $isLimit = false;
-            foreach ($item["urls"] as $url) {
-                if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
+            foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
+            $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
+            if ($proxy_host !== "") {
+                $item["urls"] = $item["urls"]->map(function ($url) use ($proxy_host) {
+                    return $proxy_host . "?url=" . base64_encode(strrev($url));
+                });
             }
+            $item["urls"] = $item["urls"]->values()->toArray();
 
-            $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"))->values()->toArray();
+            $file = FileList::query()->firstWhere([
+                "surl" => $request["surl"],
+                "pwd" => $request["pwd"],
+                "fs_id" => $item["fs_id"]
+            ]);
 
-            Account::query()
-                ->find($item["account_id"])
-                ->update([
-                    "switch" => !$isLimit,
-                    "reason" => $isLimit ? "账号已限速" : ""
-                ]);
+            $account = Account::query()->find($item["account_id"]);
+            if (!Carbon::parse($account["updated_at"])->isToday()) $account->update(["total_size" => 0]);
+            $account->increment("total_size", $file["size"]);
+            $account->update([
+                "switch" => !$isLimit,
+                "reason" => $isLimit ? "账号已限速" : ""
+            ]);
 
             if ($isLimit) {
                 $item["message"] = "获取成功,但下载链接已限速,推荐重新解析";
             } else {
-                $fs_id = FileList::query()->firstWhere([
-                    "surl" => $request["surl"],
-                    "pwd" => $request["pwd"],
-                    "fs_id" => $item["fs_id"]
-                ]);
                 // 插入记录
                 Record::query()->create([
                     "ip" => UtilsController::getIp($request),
                     "fingerprint" => $request["rand2"] ?? "",
-                    "fs_id" => $fs_id["id"],
+                    "fs_id" => $file["id"],
                     "urls" => $item["urls"],
                     "ua" => $item["ua"],
                     "token_id" => $token["id"],
