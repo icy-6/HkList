@@ -219,4 +219,13 @@ class UtilsController extends Controller
             )
         );
     }
+
+    public static function getBDUSS($cookie)
+    {
+        preg_match('/BDUSS=([^;]*)/i', $cookie, $matches);
+        $BDUSS = $matches[0] ?? "";
+        preg_match('/STOKEN=([^;]*)/i', $cookie, $matches);
+        $STOKEN = $matches[0] ?? "";
+        return $BDUSS . "; " . $STOKEN . ";";
+    }
 }
