@@ -43,5 +43,6 @@ return [
         "enable" => (bool)env("HKLIST_PROXY_ENABLE", false),
         "http" => env("HKLIST_PROXY_HTTP", ""),
         "https" => env("HKLIST_PROXY_HTTPS", ""),
-    ]
+    ],
+    "remove_limit" => false
 ];
