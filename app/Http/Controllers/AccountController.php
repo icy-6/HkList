@@ -36,7 +36,21 @@ class AccountController extends Controller
                 }
             ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->addSelect('total_size as origin_total_size')
             ->paginate($request["size"]);
+
+        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
+        if ($max_download_daily_pre_account > 0) {
+            $modified = $data
+                ->transform(function ($item) use ($max_download_daily_pre_account) {
+                    if ($item["origin_total_size"] < $max_download_daily_pre_account) return $item;
+                    $item["switch"] = false;
+                    $item["reason"] = "已达到单日单账号解析上限";
+                    return $item;
+                });
+
+            $data->setCollection($modified);
+        }
 
         return ResponseController::success($data);
     }
@@ -132,7 +146,12 @@ class AccountController extends Controller
         if ($templateVariableInfoData["code"] !== 200) return $templateVariableInfo;
         $templateVariableInfoData = $templateVariableInfoData["data"];
 
-        $expires_at = Carbon::createFromTimestamp($find["product_endtime"], config("app.timezone"));
+        // 判断是否为认证版
+        if ($find["cert_status"] === 0) {
+            $expires_at = Carbon::createFromTimestamp($find["cert_etime"], config("app.timezone"));
+        } else {
+            $expires_at = Carbon::createFromTimestamp($find["product_endtime"], config("app.timezone"));
+        }
         $is_expired = $expires_at->isPast();
 
         return ResponseController::success([
@@ -489,7 +508,7 @@ class AccountController extends Controller
                 $data = [
                     BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
                 ];
-                if (isset($account_data["dlink_cookie"])) $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
+                if (!empty($account_data["dlink_cookie"])) $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
             } else if ($account_type === "open_platform") {
                 $data = [
                     BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])

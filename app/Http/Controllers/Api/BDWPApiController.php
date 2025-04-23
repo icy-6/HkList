@@ -212,6 +212,10 @@ class BDWPApiController extends Controller
             "product_name" => $item["orgInfo"]["product_name"],
             "product_starttime" => $item["orgInfo"]["product_starttime"],
             "product_endtime" => $item["orgInfo"]["product_endtime"],
+            "brief" => $item["orgInfo"]["brief"],
+            "cert_etime" => $item["orgInfo"]["cert_etime"],
+            "cert_status" => $item["orgInfo"]["cert_status"],
+            "cert_stime" => $item["orgInfo"]["cert_stime"],
         ]);
 
         return ResponseController::success($orgInfo);
@@ -467,7 +471,7 @@ class BDWPApiController extends Controller
         ) {
             return ResponseController::getVcodeFailed(($response["code"] ?? "未知") . ($response["message"] ?? "未知"));
         }
-        
+
         return ResponseController::success([
             "vcode_str" => $response["data"]["vcode_str"],
             "vcode_input" => $response["data"]["vcode_input"],

@@ -154,6 +154,15 @@ class ParseController extends Controller
 
     public static function getRandomCookie(Request $request, $makeNew = false)
     {
+        // 清空已解析记录文件大小
+        Account::query()
+            ->whereDate("total_size_updated_at", "<", now())
+            ->orWhereNull("total_size_updated_at")
+            ->update([
+                "total_size" => 0,
+                "total_size_updated_at" => now()
+            ]);
+
         $province = null;
         $limit_cn = config("hklist.limit.limit_cn");
         $limit_prov = config("hklist.limit.limit_prov");
@@ -274,48 +283,51 @@ class ParseController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        if ($request["download_folder"] && !config("hklist.parse.allow_folder")) return ResponseController::canNotDownloadFolder();
+        $remove_limit = config("hklist.remove_limit");
+        if (!$remove_limit) {
+            if ($request["download_folder"] && !config("hklist.parse.allow_folder")) return ResponseController::canNotDownloadFolder();
 
-        // 每次请求不能超过多少个
-        $max_once = config("hklist.limit.max_once");
-        if (count($request["fs_id"]) > $max_once) return ResponseController::filesOverLoaded();
+            // 每次请求不能超过多少个
+            $max_once = config("hklist.limit.max_once");
+            if (count($request["fs_id"]) > $max_once) return ResponseController::filesOverLoaded();
 
-        // 检查限制还能不能解析
-        $checkLimitRes = self::getLimit($request);
-        $checkLimitData = $checkLimitRes->getData(true);
-        if ($checkLimitData["code"] !== 200) return $checkLimitRes;
-        $checkLimitData = $checkLimitData["data"];
+            // 检查限制还能不能解析
+            $checkLimitRes = self::getLimit($request);
+            $checkLimitData = $checkLimitRes->getData(true);
+            if ($checkLimitData["code"] !== 200) return $checkLimitRes;
+            $checkLimitData = $checkLimitData["data"];
 
-        // 检查文件数量是否小于剩余配额
-        if (count($request["fs_id"]) > $checkLimitData["count"]) return ResponseController::tokenQuotaCountIsNotEnough();
+            // 检查文件数量是否小于剩余配额
+            if (count($request["fs_id"]) > $checkLimitData["count"]) return ResponseController::tokenQuotaCountIsNotEnough();
 
-        // 检查链接是否有效
-        $valid = self::getFileList($request);
-        $validData = $valid->getData(true);
-        if ($validData["code"] !== 200) return $valid;
+            // 检查链接是否有效
+            $valid = self::getFileList($request);
+            $validData = $valid->getData(true);
+            if ($validData["code"] !== 200) return $valid;
 
-        // 获取文件列表
-        $fileList = FileList::query()
-            ->where(["surl" => $request["surl"], "pwd" => $request["pwd"]])
-            ->whereIn("fs_id", $request["fs_id"])
-            ->get();
+            // 获取文件列表
+            $fileList = FileList::query()
+                ->where(["surl" => $request["surl"], "pwd" => $request["pwd"]])
+                ->whereIn("fs_id", $request["fs_id"])
+                ->get();
 
-        // 神秘文件
-        if ($fileList->count() !== count($request["fs_id"])) return ResponseController::unknownFsId();
+            // 神秘文件
+            if ($fileList->count() !== count($request["fs_id"])) return ResponseController::unknownFsId();
 
-        $min_filesize = config("hklist.limit.min_single_filesize");
-        $max_filesize = config("hklist.limit.max_single_filesize");
-        foreach ($fileList as $file) {
-            if ($file["size"] < $min_filesize) return ResponseController::fileIsTooSmall();
-            if ($file["size"] > $max_filesize) return ResponseController::fileIsTooBig();
+            $min_filesize = config("hklist.limit.min_single_filesize");
+            $max_filesize = config("hklist.limit.max_single_filesize");
+            foreach ($fileList as $file) {
+                if ($file["size"] < $min_filesize) return ResponseController::fileIsTooSmall();
+                if ($file["size"] > $max_filesize) return ResponseController::fileIsTooBig();
+            }
+
+            $sum = $fileList->sum("size");
+
+            if ($sum > config("hklist.limit.max_all_filesize")) return ResponseController::filesIsTooBig();
+
+            // 检查文件总大小是否大于剩余配额
+            if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
         }
-
-        $sum = $fileList->sum("size");
-
-        if ($sum > config("hklist.limit.max_all_filesize")) return ResponseController::filesIsTooBig();
-
-        // 检查文件总大小是否大于剩余配额
-        if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
 
         $response = match (config("hklist.parse.parse_mode")) {
             0 => V0Controller::request($request),
@@ -332,41 +344,53 @@ class ParseController extends Controller
         if ($responseData["code"] !== 200) return $response;
         $responseData = $responseData["data"];
 
-        $token = Token::query()->firstWhere("token", $request["token"]);
-        $ip = UtilsController::getIp($request);
+        if (!$remove_limit) {
+            $token = Token::query()->firstWhere("token", $request["token"]);
+            $ip = UtilsController::getIp($request);
 
-        if ($token["token"] !== "guest") {
-            if (!in_array($ip, $token["ip"])) {
-                if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
-                // 插入当前ip
-                $token->update(["ip" => [$ip, ...$token["ip"]]]);
+            if ($token["token"] !== "guest") {
+                if (!in_array($ip, $token["ip"])) {
+                    if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+                    // 插入当前ip
+                    $token->update(["ip" => [$ip, ...$token["ip"]]]);
+                }
+                if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
             }
-            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
+        } else {
+            $token = null;
         }
 
         $proxy_host = config("hklist.parse.proxy_host");
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host) {
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $remove_limit) {
             if ($item["message"] !== "请求成功") return $item;
 
             $isLimit = false;
             foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
-            if ($proxy_host !== "") {
-                $item["urls"] = $item["urls"]->map(function ($url) use ($proxy_host) {
-                    return $proxy_host . "?url=" . base64_encode(strrev($url));
-                });
-            }
+            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(strrev($url)));
             $item["urls"] = $item["urls"]->values()->toArray();
 
-            $file = FileList::query()->firstWhere([
-                "surl" => $request["surl"],
-                "pwd" => $request["pwd"],
-                "fs_id" => $item["fs_id"]
-            ]);
+            if (!$remove_limit) {
+                $file = FileList::query()->firstWhere([
+                    "surl" => $request["surl"],
+                    "pwd" => $request["pwd"],
+                    "fs_id" => $item["fs_id"]
+                ]);
+            }
 
             $account = Account::query()->find($item["account_id"]);
-            if (!Carbon::parse($account["updated_at"])->isToday()) $account->update(["total_size" => 0]);
-            $account->increment("total_size", $file["size"]);
+            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday()) {
+                $account->update([
+                    "total_size" => 0,
+                    "total_size_updated_at" => now()
+                ]);
+            }
+            if (!$remove_limit) {
+                $account->update([
+                    "total_size" => $account["total_size"] + $file["size"],
+                    "total_size_updated_at" => now()
+                ]);
+            }
             $account->update([
                 "switch" => !$isLimit,
                 "reason" => $isLimit ? "账号已限速" : ""
@@ -376,15 +400,17 @@ class ParseController extends Controller
                 $item["message"] = "获取成功,但下载链接已限速,推荐重新解析";
             } else {
                 // 插入记录
-                Record::query()->create([
-                    "ip" => UtilsController::getIp($request),
-                    "fingerprint" => $request["rand2"] ?? "",
-                    "fs_id" => $file["id"],
-                    "urls" => $item["urls"],
-                    "ua" => $item["ua"],
-                    "token_id" => $token["id"],
-                    "account_id" => $item["account_id"],
-                ]);
+                if (!$remove_limit) {
+                    Record::query()->create([
+                        "ip" => UtilsController::getIp($request),
+                        "fingerprint" => $request["rand2"] ?? "",
+                        "fs_id" => $file["id"],
+                        "urls" => $item["urls"],
+                        "ua" => $item["ua"],
+                        "token_id" => $token["id"],
+                        "account_id" => $item["account_id"],
+                    ]);
+                }
             }
 
             unset($item["account_id"]);
