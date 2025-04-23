@@ -154,6 +154,15 @@ class ParseController extends Controller
 
     public static function getRandomCookie(Request $request, $makeNew = false)
     {
+        // 清空已解析记录文件大小
+        Account::query()
+            ->whereDate("total_size_updated_at", "<", now())
+            ->orWhereNull("total_size_updated_at")
+            ->update([
+                "total_size" => 0,
+                "total_size_updated_at" => now()
+            ]);
+
         $province = null;
         $limit_cn = config("hklist.limit.limit_cn");
         $limit_prov = config("hklist.limit.limit_prov");
@@ -370,8 +379,18 @@ class ParseController extends Controller
             }
 
             $account = Account::query()->find($item["account_id"]);
-            if (!Carbon::parse($account["updated_at"])->isToday()) $account->update(["total_size" => 0]);
-            if (!$remove_limit) $account->increment("total_size", $file["size"]);
+            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday()) {
+                $account->update([
+                    "total_size" => 0,
+                    "total_size_updated_at" => now()
+                ]);
+            }
+            if (!$remove_limit) {
+                $account->update([
+                    "total_size" => $account["total_size"] + $file["size"],
+                    "total_size_updated_at" => now()
+                ]);
+            }
             $account->update([
                 "switch" => !$isLimit,
                 "reason" => $isLimit ? "账号已限速" : ""

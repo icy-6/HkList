@@ -24,6 +24,8 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
+        "total_size",
+        "total_size_updated_at",
         "created_at",
         "updated_at",
         "deleted_at"
@@ -36,14 +38,17 @@ class Account extends Model
         "account_data",
         "switch",
         "reason",
-        "prov"
+        "prov",
+        "total_size",
+        "total_size_updated_at"
     ];
 
     protected function casts(): array
     {
         return [
             "account_data" => "json",
-            "switch" => "boolean"
+            "switch" => "boolean",
+            "total_size_updated_at" => "datetime"
         ];
     }
 

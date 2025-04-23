@@ -36,7 +36,21 @@ class AccountController extends Controller
                 }
             ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
+            ->addSelect('total_size as origin_total_size')
             ->paginate($request["size"]);
+
+        $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
+        if ($max_download_daily_pre_account > 0) {
+            $modified = $data
+                ->transform(function ($item) use ($max_download_daily_pre_account) {
+                    if ($item["origin_total_size"] < $max_download_daily_pre_account) return $item;
+                    $item["switch"] = false;
+                    $item["reason"] = "已达到单日单账号解析上限";
+                    return $item;
+                });
+
+            $data->setCollection($modified);
+        }
 
         return ResponseController::success($data);
     }
