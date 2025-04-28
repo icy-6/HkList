@@ -23,27 +23,30 @@ class ParseConfigController extends Controller
             "parser_password" => "nullable|string",
             "user_agent" => "required|string",
             "parse_mode" => "required|numeric",
-            "use_exploit" => "required|boolean",
+            "guest_parse_mode" => "required|numeric",
             "allow_folder" => "required|boolean",
             "ddddocr_server" => "nullable|string",
-            "proxy_host" => "nullable|string",
+            "guest_proxy_host" => "nullable|string",
+            "token_proxy_host" => "nullable|string",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
         if (str_ends_with($request["parser_server"] ?? "", "/")) $request["parser_server"] = substr($request["parser_server"], 0, -1);
         if (str_ends_with($request["ddddocr_server"] ?? "", "/")) $request["ddddocr_server"] = substr($request["ddddocr_server"], 0, -1);
-        if (str_ends_with($request["proxy_host"] ?? "", "/")) $request["proxy_host"] = substr($request["proxy_host"], 0, -1);
+        if (str_ends_with($request["guest_proxy_host"] ?? "", "/")) $request["guest_proxy_host"] = substr($request["guest_proxy_host"], 0, -1);
+        if (str_ends_with($request["token_proxy_host"] ?? "", "/")) $request["token_proxy_host"] = substr($request["token_proxy_host"], 0, -1);
 
         UtilsController::updateEnv([
             "HKLIST_PARSER_SERVER" => $request["parser_server"] ?? "",
             "HKLIST_PARSER_PASSWORD" => $request["parser_password"] ?? "",
             "HKLIST_USER_AGENT" => $request["user_agent"],
             "HKLIST_PARSE_MODE" => $request["parse_mode"],
-            "HKLIST_USE_EXPLOIT" => $request["use_exploit"],
+            "HKLIST_GUEST_PARSE_MODE" => $request["guest_parse_mode"],
             "HKLIST_ALLOW_FOLDER" => $request["allow_folder"],
             "HKLIST_DDDDOCR_SERVER" => $request["ddddocr_server"] ?? "",
-            "HKLIST_PROXY_HOST" => $request["proxy_host"] ?? "",
+            "HKLIST_GUEST_PROXY_HOST" => $request["guest_proxy_host"] ?? "",
+            "HKLIST_TOKEN_PROXY_HOST" => $request["token_proxy_host"] ?? "",
         ]);
 
         return ResponseController::success();

@@ -106,27 +106,17 @@ class ParseController extends Controller
         foreach ($fileListData["list"] as $file) {
             if ($file["is_dir"]) continue;
 
-            $find = FileList::query()->firstWhere([
-                "surl" => $request["surl"],
-                "pwd" => $request["pwd"],
-                "fs_id" => $file["fs_id"]
-            ]);
-
-            if ($find) {
-                $find->update([
-                    "filename" => $file["server_filename"],
-                    "size" => $file["size"],
-                    "md5" => $file["md5"]
-                ]);
-            } else {
-                FileList::query()->create([
+            FileList::query()->updateOrInsert(
+                [
                     "surl" => $request["surl"],
                     "pwd" => $request["pwd"],
                     "fs_id" => $file["fs_id"],
-                    "size" => $file["size"],
+                ],
+                [
                     "filename" => $file["server_filename"],
-                ]);
-            }
+                    "size" => $file["size"]
+                ]
+            );
         }
 
         return ResponseController::success($fileListData);
@@ -137,9 +127,9 @@ class ParseController extends Controller
         return BDWPApiController::getVcode();
     }
 
-    public static function getAccountType()
+    public static function getAccountType($token)
     {
-        return match (config("hklist.parse.parse_mode")) {
+        return match ($token === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.parse_mode")) {
             // 正常模式
             0, 1, 2 => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
@@ -177,7 +167,7 @@ class ParseController extends Controller
             if ($limit_prov) $province = $provData["province"];
         }
 
-        $accountType = self::getAccountType();
+        $accountType = self::getAccountType($request["token"]);
         $accountTypeData = $accountType->getData(true);
         if ($accountTypeData["code"] !== 200) return $accountType;
         $accountTypeData = $accountTypeData["data"];
@@ -329,7 +319,8 @@ class ParseController extends Controller
             if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
         }
 
-        $response = match (config("hklist.parse.parse_mode")) {
+        $parse_mode = $request["token"] === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.parse_mode");
+        $response = match ($parse_mode) {
             0 => V0Controller::request($request),
             1 => V1Controller::request($request),
             2 => V2Controller::request($request),
@@ -344,23 +335,19 @@ class ParseController extends Controller
         if ($responseData["code"] !== 200) return $response;
         $responseData = $responseData["data"];
 
-        if (!$remove_limit) {
-            $token = Token::query()->firstWhere("token", $request["token"]);
-            $ip = UtilsController::getIp($request);
+        $token = Token::query()->firstWhere("token", $request["token"]);
+        $ip = UtilsController::getIp($request);
 
-            if ($token["token"] !== "guest") {
-                if (!in_array($ip, $token["ip"])) {
-                    if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
-                    // 插入当前ip
-                    $token->update(["ip" => [$ip, ...$token["ip"]]]);
-                }
-                if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
+        if (!$remove_limit && $token["token"] !== "guest") {
+            if (!in_array($ip, $token["ip"])) {
+                if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+                // 插入当前ip
+                $token->update(["ip" => [$ip, ...$token["ip"]]]);
             }
-        } else {
-            $token = null;
+            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
         }
 
-        $proxy_host = config("hklist.parse.proxy_host");
+        $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
         $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $remove_limit) {
             if ($item["message"] !== "请求成功") return $item;
 
