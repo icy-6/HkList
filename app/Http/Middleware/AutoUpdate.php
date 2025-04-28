@@ -6,8 +6,11 @@ use App\Models\Account;
 use Closure;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class AutoUpdate
 {
@@ -20,49 +23,25 @@ class AutoUpdate
     {
         if (config("database.default") === "no") return $next($request);
 
-        // 2.0.7 新增指纹ip对应表
-//        if (!Schema::hasTable('fingerprints')) {
-//            Schema::create('fingerprints', function (Blueprint $table) {
-//                $table->id();
-//                $table->text("fingerprint");
-//                $table->json("ip");
-//                $table->timestamps();
-//            });
-//        }
+        $autoUpdatePath = app_path('Http/Middleware/AutoUpdate');
+        $autoUpdatedPath = app_path('Http/Middleware/AutoUpdated');
+        $debug = config('app.debug');
 
-        // 2.0.11 删除指纹表
-        Schema::dropIfExists("fingerprints");
+        if (!File::exists($autoUpdatedPath)) File::makeDirectory($autoUpdatedPath, 0755, true);
+        $updateFiles = File::files($autoUpdatePath);
 
-        // 2.1.12 新增 enterprise_cookie_photography 账号类型
-        Schema::table("accounts", function (Blueprint $table) {
-            $table->enum("account_type", ["cookie", "enterprise_cookie", "enterprise_cookie_photography", "open_platform", "download_ticket"])->change();
-        });
+        foreach ($updateFiles as $file) {
+            if ($file->getExtension() !== 'php') continue;
 
-        // 2.1.17 新增 daily 卡密类型
-        if (!Schema::hasColumn("tokens", "token_type")) {
-            Schema::table("tokens", function (Blueprint $table) {
-                $table->enum("token_type", ["normal", "daily"])->after("token")->default("normal");
-            });
-        }
-
-        // 2.1.26 移除 enterprise_cookie_photography 账号类型
-        Account::withTrashed()->where("account_type", "enterprise_cookie_photography")->update(["account_type" => "enterprise_cookie"]);
-        Schema::table("accounts", function (Blueprint $table) {
-            $table->enum("account_type", ["cookie", "enterprise_cookie", "open_platform", "download_ticket"])->change();
-        });
-
-        // 2.1.30 恢复账号单日解析量上限
-        if (!Schema::hasColumn("accounts", "total_size")) {
-            Schema::table("accounts", function (Blueprint $table) {
-                $table->unsignedBigInteger("total_size")->after("prov")->default(0);
-            });
-        }
-
-        // 2.2.6 修复账号单日解析量上限
-        if (!Schema::hasColumn("accounts", "total_size_updated_at")) {
-            Schema::table("accounts", function (Blueprint $table) {
-                $table->dateTime("total_size_updated_at")->after("total_size")->nullable();
-            });
+            try {
+                require_once $file->getPathname();
+                if (!$debug) {
+                    $newPath = $autoUpdatedPath . '/' . $file->getFilename();
+                    File::move($file->getPathname(), $newPath);
+                }
+            } catch (Throwable $e) {
+                Log::error("AutoUpdate Failed:" . $e);
+            }
         }
 
         return $next($request);
