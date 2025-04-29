@@ -381,6 +381,8 @@ class BDWPApiController extends Controller
                 return ResponseController::getFileListFailed($errno, $info ?? $errtype);
             } else if ($errno === 2) {
                 return ResponseController::getFileListFailed(999, "surl错误");
+            } else if ($errno === -6) {
+                return ResponseController::getFileListFailed($errno, "请不要使用私密链接");
             }
 
             return ResponseController::getFileListFailed($errno, $errtype);
