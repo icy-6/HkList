@@ -103,21 +103,20 @@ class ParseController extends Controller
         if ($fileListData["code"] !== 200) return $fileList;
         $fileListData = $fileListData["data"];
 
+        $data = [];
         foreach ($fileListData["list"] as $file) {
             if ($file["is_dir"]) continue;
 
-            FileList::query()->updateOrInsert(
-                [
-                    "surl" => $request["surl"],
-                    "pwd" => $request["pwd"],
-                    "fs_id" => $file["fs_id"],
-                ],
-                [
-                    "filename" => $file["server_filename"],
-                    "size" => $file["size"]
-                ]
-            );
+            $data[] = [
+                'surl' => $request["surl"],
+                'pwd' => $request["pwd"],
+                'fs_id' => $file["fs_id"],
+                'size' => $file["size"],
+                'filename' => $file["server_filename"]
+            ];
         }
+
+        FileList::query()->upsert($data, ["surl", "pwd", "fs_id"], ["size", "filename"]);
 
         return ResponseController::success($fileListData);
     }
