@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\ResponseController;
 use App\Models\Account;
 use Closure;
 use Illuminate\Database\Schema\Blueprint;
@@ -41,6 +42,7 @@ class AutoUpdate
                 }
             } catch (Throwable $e) {
                 Log::error("AutoUpdate Failed:" . $e);
+                return ResponseController::autoUpdateError($e->getMessage());
             }
         }
 

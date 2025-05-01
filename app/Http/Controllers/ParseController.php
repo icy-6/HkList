@@ -299,7 +299,10 @@ class ParseController extends Controller
                 ->get();
 
             // 神秘文件
-            if ($fileList->count() !== count($request["fs_id"])) return ResponseController::unknownFsId();
+            $fileListCount = $fileList->count();
+            $requestFsIdCount = count($request["fs_id"]);
+            if ($fileListCount > $requestFsIdCount) return ResponseController::unUniqueFsId();
+            else if ($fileListCount !== $requestFsIdCount) return ResponseController::unknownFsId();
 
             $min_filesize = config("hklist.limit.min_single_filesize");
             $max_filesize = config("hklist.limit.max_single_filesize");

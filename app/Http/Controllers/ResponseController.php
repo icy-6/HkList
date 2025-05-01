@@ -332,4 +332,14 @@ class ResponseController extends Controller
     {
         return self::response(20060, 400, "cid错误");
     }
+
+    public static function unUniqueFsId()
+    {
+        return self::response(20061, 500, "出现意外的重复fs_id,请联系管理员");
+    }
+
+    public static function autoUpdateError($message)
+    {
+        return self::response(20062, 500, "自动更新失败:{$message}");
+    }
 }
