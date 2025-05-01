@@ -103,20 +103,18 @@ class ParseController extends Controller
         if ($fileListData["code"] !== 200) return $fileList;
         $fileListData = $fileListData["data"];
 
-        $data = [];
-        foreach ($fileListData["list"] as $file) {
-            if ($file["is_dir"]) continue;
+        $data = collect($fileListData["list"])
+            ->filter(fn($item) => !$item["is_dir"])
+            ->map(fn($item) => [
+                "surl" => $request["surl"],
+                "pwd" => $request["pwd"],
+                "fs_id" => $item["fs_id"],
+                "size" => $item["size"],
+                "filename" => $item["server_filename"]
+            ])
+            ->toArray();
 
-            $data[] = [
-                'surl' => $request["surl"],
-                'pwd' => $request["pwd"],
-                'fs_id' => $file["fs_id"],
-                'size' => $file["size"],
-                'filename' => $file["server_filename"]
-            ];
-        }
-
-        FileList::query()->upsert($data, ["surl", "pwd", "fs_id"], ["size", "filename"]);
+        FileList::query()->upsert($data, ["fs_id"], ["size", "filename"]);
 
         return ResponseController::success($fileListData);
     }
