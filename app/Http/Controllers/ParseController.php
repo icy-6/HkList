@@ -309,7 +309,6 @@ class ParseController extends Controller
 
             // 获取文件列表
             $fileList = FileList::query()
-                ->where(["surl" => $request["surl"], "pwd" => $request["pwd"]])
                 ->whereIn("fs_id", $request["fs_id"])
                 ->get();
 
