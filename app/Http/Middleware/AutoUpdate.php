@@ -41,7 +41,7 @@ class AutoUpdate
                     File::move($file->getPathname(), $newPath);
                 }
             } catch (Throwable $e) {
-                Log::error("AutoUpdate Failed:" . $e);
+                if (!str_contains($e->getMessage(), "正在索引中")) Log::error("AutoUpdate Failed:" . $e);
                 return ResponseController::autoUpdateError($e->getMessage());
             }
         }

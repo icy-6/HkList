@@ -12,7 +12,7 @@ set_time_limit(0);
 // 2.2.10 修复文件列表表 fs_id 索引
 $indexes = DB::select('SHOW INDEXES FROM file_lists WHERE Column_name = ?', ['fs_id']);
 if (empty($indexes)) {
-    if (Cache::get("fs_id_indexing")) throw new Exception("正在索引中,请稍后再试");
+    if (Cache::get("fs_id_indexing")) throw new Exception("正在索引中,请稍后再试,如长时间未完成,请联系管理员");
 
     Cache::set("fs_id_indexing", true);
 
