@@ -6,6 +6,7 @@ use App\Models\Record;
 use App\Models\Token;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -185,43 +186,23 @@ class TokenController extends Controller
 
     public function getToken(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            "token" => "required|string"
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        $getLimit = ParseController::getLimit($request, true);
+        $getLimitRes = $getLimit->getData(true);
+        if ($getLimitRes["code"] !== 200) return $getLimitRes;
+        $getLimitData = $getLimitRes["data"];
 
-        $token = Token::query()->firstWhere("token", $request["token"]);
-        if (!$token) return ResponseController::TokenNotExists();
-
-        if (!$token["switch"]) return ResponseController::tokenHasBeenBaned($token["reason"]);
-
-        $token = $token->toArray();
-
-        $recordsQuery = Record::query()->where("token_id", $token["id"]);
-        if ($request["token"] === "guest") {
-            $recordsQuery
-                ->where("ip", UtilsController::getIp($request))
-                ->whereDate("records.created_at", "=", now());
-        }
-
-        if ($token["token_type"] === "daily") {
-            $recordsQuery = $recordsQuery->whereDate("records.created_at", now());
-        }
-
-        $records = $recordsQuery->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
-            ->selectRaw("SUM(size) as size,COUNT(*) as count")
-            ->first();
-
-        $firstRecord = Record::query()->where("token_id", $token["id"])->get("created_at")->first();
+        $token = $getLimitData["token"];
+        $recordsCount = $getLimitData["records_count"];
+        $recordsSize = $getLimitData["records_size"];
 
         return ResponseController::success([
             "token" => $token["token"],
             "count" => $token["count"],
             "size" => $token["size"],
-            "remaining_count" => $token["count"] - $records["count"],
-            "remaining_size" => $token["size"] - $records["size"],
+            "remaining_count" => $token["count"] - $recordsCount,
+            "remaining_size" => $token["size"] - $recordsSize,
             "ip" => $token["ip"],
-            "used_at" => $firstRecord ? $firstRecord->toArray()["created_at"] : null,
+            "used_at" => Carbon::parse($token["expires_at"])->subDays($token["day"])->format('Y-m-d H:i:s'),
             "expires_at" => $token["expires_at"],
         ]);
     }

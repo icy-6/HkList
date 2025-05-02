@@ -73,9 +73,41 @@ class ResponseController extends Controller
         return self::response(20010, 500, "获取账号封禁状态失败,errno: $errno, errmsg: $errmsg");
     }
 
+    public const getFileListMap = [
+        "-1" => "由于您分享了违反相关法律法规的文件，分享功能已被禁用，之前分享出去的文件不受影响。",
+        "-2" => "用户不存在,请刷新页面后重试",
+        "-3" => "文件不存在,请刷新页面后重试",
+        "-4" => "登录信息有误，请重新登录试试",
+        "-5" => "host_key和user_key无效",
+        "-6" => "请重新登录",
+        "-7" => "该分享已删除或已取消",
+        "-8" => "该分享已经过期",
+        "-9" => "访问密码错误",
+        "-10" => "分享外链已经达到最大上限100000条，不能再次分享",
+        "-11" => "验证cookie无效",
+        "-14" => "对不起，短信分享每天限制20条，你今天已经分享完，请明天再来分享吧！",
+        "-15" => "对不起，邮件分享每天限制20封，你今天已经分享完，请明天再来分享吧！",
+        "-16" => "对不起，该文件已经限制分享！",
+        "-17" => "文件分享超过限制",
+        "-30" => "文件已存在",
+        "-31" => "文件保存失败",
+        "-33" => "一次支持操作999个，减点试试吧",
+        "-32" => "未知",
+        "-70" => "你分享的文件中包含病毒或疑似病毒，为了你和他人的数据安全，换个文件分享吧",
+        2 => "参数错误",
+        3 => "未登录或帐号无效",
+        4 => "存储好像出问题了，请稍后再试",
+        108 => "文件名有敏感词，优化一下吧",
+        110 => "分享次数超出限制，可以到“我的分享”中查看已分享的文件链接",
+        114 => "当前任务不存在，保存失败",
+        115 => "该文件禁止分享",
+        112 => '页面已过期'
+    ];
+
     public static function getFileListFailed($errno, $errtype)
     {
-        return self::response(20011, 500, "获取分享链接信息失败,errno: $errno, errtype: $errtype");
+        $message = self::getFileListMap[$errno] ?? "未知";
+        return self::response(20011, 500, "获取分享链接信息失败,errno: $errno, errtype: $errtype,message: $message");
     }
 
 //    public static function getFileListMsgFailed($errmsg)
@@ -341,5 +373,10 @@ class ResponseController extends Controller
     public static function autoUpdateError($message)
     {
         return self::response(20062, 500, "自动更新失败:{$message}");
+    }
+
+    public static function unknownTokenType()
+    {
+        return self::response(20063, 500, "未知卡密类型");
     }
 }

@@ -34,7 +34,7 @@ class ParseController extends Controller
         ]);
     }
 
-    public function getLimit(Request $request)
+    public static function getLimit(Request $request, $returnInfo = false)
     {
         $validator = Validator::make($request->all(), [
             "token" => "required|string",
@@ -63,25 +63,40 @@ class ParseController extends Controller
             if ($token["expires_at"] !== null && $token["expires_at"]->isPast()) return ResponseController::TokenExpired();
         }
 
-        if ($token["token_type"] === "daily") {
-            $recordsQuery = $recordsQuery->whereDate("records.created_at", "=", now());
+        if ($token["token_type"] === "normal") {
+            $recordsCount = $tokenArray["used_count"];
+            $recordsSize = $tokenArray["used_size"];
+        } else if ($token["token_type"] === "daily") {
+            $records = $recordsQuery
+                ->whereDate("records.created_at", "=", now())
+                ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
+                ->selectRaw("SUM(size) as size,COUNT(*) as count")
+                ->first();
+
+            $recordsCount = $records["count"] ?? 0;
+            $recordsSize = $records["size"] ?? 0;
+        } else {
+            return ResponseController::unknownTokenType();
         }
 
-        $records = $recordsQuery
-            ->leftJoin("file_lists", "file_lists.id", "=", "records.fs_id")
-            ->selectRaw("SUM(size) as size,COUNT(*) as count")
-            ->first();
+        if ($returnInfo) {
+            return ResponseController::success([
+                "records_count" => $recordsCount,
+                "records_size" => $recordsSize,
+                "token" => $tokenArray
+            ]);
+        }
 
         if (
-            $records["count"] >= $token["count"] ||
-            $records["size"] >= $token["size"]
+            $recordsCount >= $token["count"] ||
+            $recordsSize >= $token["size"]
         ) {
             return ResponseController::TokenQuotaHasBeenUsedUp();
         }
 
         return ResponseController::success([
-            "count" => $token["count"] - $records["count"],
-            "size" => $token["size"] - $records["size"],
+            "count" => $token["count"] - $recordsCount,
+            "size" => $token["size"] - $recordsSize,
             "expires_at" => $tokenArray["expires_at"]
         ]);
     }
@@ -348,13 +363,14 @@ class ParseController extends Controller
         }
 
         $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $remove_limit) {
+        $proxy_password = config("hklist.parse.token_proxy_password");
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit) {
             if ($item["message"] !== "请求成功") return $item;
 
             $isLimit = false;
             foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
-            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(strrev($url)));
+            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(UtilsController::xor_encrypt($url, $proxy_password)));
             $item["urls"] = $item["urls"]->values()->toArray();
 
             if (!$remove_limit) {
@@ -397,6 +413,13 @@ class ParseController extends Controller
                         "token_id" => $token["id"],
                         "account_id" => $item["account_id"],
                     ]);
+                    // 删除指定天数之前的记录
+                    Record::query()->where("created_at", "<", now()->subDays(config("hklist.general.save_histories_day")))->delete();
+                    // 如果当前卡密是普通类型就自增
+                    if ($token["token_type"] === "normal") {
+                        $token->increment("used_size", $file["size"]);
+                        $token->increment("used_count");
+                    }
                 }
             }
 
