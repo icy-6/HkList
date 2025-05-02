@@ -40,6 +40,7 @@ return [
         "ddddocr_server" => env("HKLIST_DDDDOCR_SERVER", "https://ddddocr.huankong.top"),
         "guest_proxy_host" => env("HKLIST_GUEST_PROXY_HOST", env("HKLIST_PROXY_HOST", "")),
         "token_proxy_host" => env("HKLIST_TOKEN_PROXY_HOST", env("HKLIST_PROXY_HOST", "")),
+        "token_proxy_password" => env("HKLIST_TOKEN_PROXY_PASSWORD", "hklist")
     ],
     "proxy" => [
         "enable" => (bool)env("HKLIST_PROXY_ENABLE", false),

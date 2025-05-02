@@ -32,6 +32,7 @@ class GeneralConfigController extends Controller
             "logo" => "required|string",
             "debug" => "required|boolean",
             "disable_check_rand" => "required|boolean",
+            "save_histories_day" => "required|numeric",
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -48,6 +49,7 @@ class GeneralConfigController extends Controller
             "APP_LOGO" => $request["logo"],
             "APP_DEBUG" => $request["debug"],
             "HKLIST_DISABLE_CHECK_RAND" => $request["disable_check_rand"],
+            "HKLIST_SAVE_HISTORIES_DAY" => max($request["save_histories_day"], 7),
         ]);
 
         return ResponseController::success();

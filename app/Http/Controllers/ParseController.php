@@ -363,13 +363,14 @@ class ParseController extends Controller
         }
 
         $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $remove_limit) {
+        $proxy_password = config("hklist.parse.token_proxy_password");
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit) {
             if ($item["message"] !== "请求成功") return $item;
 
             $isLimit = false;
             foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
-            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(strrev($url)));
+            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(UtilsController::xor_encrypt($url, $proxy_password)));
             $item["urls"] = $item["urls"]->values()->toArray();
 
             if (!$remove_limit) {

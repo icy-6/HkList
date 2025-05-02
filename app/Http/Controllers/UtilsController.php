@@ -228,4 +228,17 @@ class UtilsController extends Controller
         $STOKEN = $matches[0] ?? "";
         return $BDUSS . "; " . $STOKEN . ";";
     }
+
+    public static function xor_encrypt($data, $key)
+    {
+        $output = '';
+        $key_len = strlen($key);
+
+        // 按字节进行 XOR 加密
+        for ($i = 0; $i < strlen($data); $i++) {
+            $output .= chr(ord($data[$i]) ^ ord($key[$i % $key_len]));
+        }
+
+        return $output;
+    }
 }

@@ -28,6 +28,7 @@ class ParseConfigController extends Controller
             "ddddocr_server" => "nullable|string",
             "guest_proxy_host" => "nullable|string",
             "token_proxy_host" => "nullable|string",
+            "token_proxy_password" => "nullable|string"
         ]);
 
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
@@ -47,6 +48,7 @@ class ParseConfigController extends Controller
             "HKLIST_DDDDOCR_SERVER" => $request["ddddocr_server"] ?? "",
             "HKLIST_GUEST_PROXY_HOST" => $request["guest_proxy_host"] ?? "",
             "HKLIST_TOKEN_PROXY_HOST" => $request["token_proxy_host"] ?? "",
+            "HKLIST_TOKEN_PROXY_PASSWORD" => $request["token_proxy_password"] ?? ""
         ]);
 
         return ResponseController::success();
