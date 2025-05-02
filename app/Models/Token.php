@@ -31,6 +31,8 @@ class Token extends Model
         "count",
         "size",
         "day",
+        "used_count",
+        "used_size",
         "can_use_ip_count",
         "ip",
         "switch",
