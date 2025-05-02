@@ -374,8 +374,6 @@ class ParseController extends Controller
 
             if (!$remove_limit) {
                 $file = FileList::query()->firstWhere([
-                    "surl" => $request["surl"],
-                    "pwd" => $request["pwd"],
                     "fs_id" => $item["fs_id"]
                 ]);
             }
