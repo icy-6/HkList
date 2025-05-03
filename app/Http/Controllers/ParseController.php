@@ -417,6 +417,8 @@ class ParseController extends Controller
                         $token->increment("used_size", $file["size"]);
                         $token->increment("used_count");
                     }
+                    $account->increment("used_size", $file["size"]);
+                    $account->increment("used_count");
                 }
             }
 

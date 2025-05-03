@@ -21,29 +21,26 @@ class AccountController extends Controller
 
         $data = Account::query()
             ->withCount([
-                'records as total_count',
                 'records as today_count' => function ($query) {
                     $query->whereDate('created_at', now());
                 }
             ])
             ->withSum([
-                'records as total_size' => function ($query) {
-                    $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id');
-                },
                 'records as today_size' => function ($query) {
                     $query->leftJoin('file_lists', 'file_lists.id', '=', 'records.fs_id')
                         ->whereDate('records.created_at', now());
                 }
             ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->addSelect('total_size as origin_total_size')
+            ->addSelect('used_size as total_size')
+            ->addSelect('used_count as total_count')
             ->paginate($request["size"]);
 
         $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
         if ($max_download_daily_pre_account > 0) {
             $modified = $data
                 ->transform(function ($item) use ($max_download_daily_pre_account) {
-                    if ($item["origin_total_size"] < $max_download_daily_pre_account) return $item;
+                    if ($item["total_size"] < $max_download_daily_pre_account) return $item;
                     $item["switch"] = false;
                     $item["reason"] = "已达到单日单账号解析上限";
                     return $item;
