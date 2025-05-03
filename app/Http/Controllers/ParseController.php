@@ -369,7 +369,7 @@ class ParseController extends Controller
             $isLimit = false;
             foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
             $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
-            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . base64_encode(UtilsController::xor_encrypt($url, $proxy_password)));
+            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $proxy_password))));
             $item["urls"] = $item["urls"]->values()->toArray();
 
             if (!$remove_limit) {
