@@ -25,7 +25,7 @@ class UpdateFileLists extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = '对file_lists表制作索引';
 
     /**
      * Execute the console command.
@@ -50,46 +50,72 @@ class UpdateFileLists extends Command
                 $page = 1;
                 $perPage = 1000;
                 $needDelete = [];
-                $total=FileList::query()->limit(1)->latest()->first()["id"];
+                $allRecordsToUpdate = [];
+
                 while (true) {
-                    $_files = FileList::query()->paginate($perPage, ['*'], 'page', $page);
-                    $files = $_files->getCollection();
+                    $files = FileList::query()->paginate($perPage, ['*'], 'page', $page)->getCollection();
                     if ($files->count() === 0) break;
                     $page++;
-//if($total==0)$total=$_files->total();
+
+                    $fsIds = $files->pluck('fs_id');
+                    $tempFiles = FileListsTemp::query()->whereIn("fs_id", $fsIds)->get()->keyBy("fs_id");
+
                     foreach ($files as $file) {
-                        $tempFile = DB::table("file_lists_temp")->where("fs_id", $file["fs_id"])->first();
-                        // 进度
-//                        $precent = $file["id"] / $total * 100;
-                        //                      echo(date("Y-m-d H:i:s") . " id:" . $file["id"] . " fs_id:" . $file["fs_id"] . " prcennt:" . $precent . "\n");
+                        $tempFile = $tempFiles[$file["fs_id"]] ?? null;
 
-                        // 如果存在,查找records表中对应数据
-                        if ($tempFile) {
-                            $ids = FileList::query()->where("fs_id", $file["fs_id"])->get()->pluck("id");
-
-                            Record::query()
-                                ->whereIn("fs_id", $ids)
-                                ->update([
-                                    "fs_id" => $tempFile->table_id
-                                ]);
-
-                            $needDelete = array_merge($needDelete, $ids->filter(fn($id) => $id !== $tempFile->table_id)->toArray());
-
-                            if (count($needDelete) >= 60000) {
-                                FileList::query()->whereIn("id", $needDelete)->delete();
-                                $needDelete = [];
-                                $page = 1;
-                            }
-                        } else {
-                            DB::table("file_lists_temp")->insert([
+                        // 如果不存在,插入数据
+                        if (!$tempFile) {
+                            $tempFiles[$file["fs_id"]] = [
+                                "table_id" => $file["id"],
+                                "fs_id" => $file["fs_id"]
+                            ];
+                            FileListsTemp::query()->create([
                                 "table_id" => $file["id"],
                                 "fs_id" => $file["fs_id"]
                             ]);
+                            continue;
                         }
+
+                        $ids = FileList::query()->where("fs_id", $file["fs_id"])->get()->pluck("id");
+
+                        $recordIds = Record::query()
+                            ->whereIn("fs_id", $ids)
+                            ->get(['id', 'fs_id']);
+
+                        // 批量更新 fs_id
+                        foreach ($recordIds as $record) {
+                            $allRecordsToUpdate[] = [
+                                'id' => $record["id"],
+                                'fs_id' => $tempFile["table_id"]
+                            ];
+                        }
+
+                        $needDelete = array_merge($needDelete, $ids->filter(fn($id) => $id !== $tempFile["table_id"])->toArray());
                     }
                 }
 
-                FileList::query()->whereIn("id", $needDelete)->delete();
+                foreach (array_chunk($allRecordsToUpdate, 50000) as $chunk) {
+                    $caseStatements = '';
+                    $ids = [];
+                    foreach ($chunk as $update) {
+                        $ids[] = $update["id"];
+                        $caseStatements .= "WHEN {$update['id']} THEN '{$update['fs_id']}' ";
+                    }
+
+                    $sql = "
+        UPDATE records 
+        SET fs_id = CASE id
+            {$caseStatements}
+            ELSE fs_id END
+        WHERE id IN (" . implode(',', $ids) . ")
+    ";
+
+                    DB::statement($sql);
+                }
+
+                foreach (array_chunk($needDelete, 50000) as $chunk) {
+                    FileList::query()->whereIn('id', $chunk)->delete();
+                }
 
                 Schema::dropIfExists("file_lists_temp");
 
