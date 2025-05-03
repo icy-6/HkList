@@ -27,36 +27,53 @@ if (empty($indexes)) {
         $page = 1;
         $perPage = 1000;
         $needDelete = [];
+        $allRecordsToUpdate = [];
+
         while (true) {
             $files = FileList::query()->paginate($perPage, ['*'], 'page', $page);
             $files = $files->getCollection();
             if ($files->count() === 0) break;
             $page++;
 
+            $fsIds = $files->pluck('fs_id')->toArray();
+            $tempFiles = DB::table("file_lists_temp")->whereIn("fs_id", $fsIds)->get()->keyBy('fs_id');
+
             foreach ($files as $file) {
-                $tempFile = DB::table("file_lists_temp")->where("fs_id", $file["fs_id"])->first();
+                $tempFile = $tempFiles[$file->fs_id] ?? null;
 
                 // 如果存在,查找records表中对应数据
                 if ($tempFile) {
                     $ids = FileList::query()->where("fs_id", $file["fs_id"])->get()->pluck("id");
 
-                    Record::query()
+                    $recordIds = Record::query()
                         ->whereIn("fs_id", $ids)
-                        ->update([
-                            "fs_id" => $tempFile->table_id
-                        ]);
+                        ->get(['id', 'fs_id']);
+
+                    // 批量更新 fs_id
+                    foreach ($recordIds as $record) {
+                        $allRecordsToUpdate[] = [
+                            'id' => $record->id,
+                            'fs_id' => $tempFile->table_id
+                        ];
+                    }
 
                     $needDelete = array_merge($needDelete, $ids->filter(fn($id) => $id !== $tempFile->table_id)->toArray());
                 } else {
                     DB::table("file_lists_temp")->insert([
-                        "table_id" => $file["id"],
-                        "fs_id" => $file["fs_id"]
+                        "table_id" => $file->id,
+                        "fs_id" => $file->fs_id
                     ]);
                 }
             }
         }
 
-        FileList::query()->whereIn("id", $needDelete)->delete();
+        foreach (array_chunk($allRecordsToUpdate, 5000) as $chunk) {
+            Record::query()->update($chunk);
+        }
+
+        foreach (array_chunk($needDelete, 5000) as $chunk) {
+            FileList::query()->whereIn('id', $chunk)->delete();
+        }
 
         Schema::dropIfExists("file_lists_temp");
 
