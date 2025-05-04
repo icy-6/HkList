@@ -39,6 +39,8 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
+        "used_count",
+        "used_size",
         "total_size",
         "total_size_updated_at"
     ];

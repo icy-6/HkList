@@ -208,16 +208,11 @@ class UtilsController extends Controller
         );
     }
 
+    public const ignoreErrorCode = [31350, 31362, 31066, 31390];
+
     public static function checkResponse($response)
     {
-        return (
-            !isset($response["data"]["error_code"]) ||
-            (
-                $response["data"]["error_code"] !== 31066 &&
-                $response["data"]["error_code"] !== 31362 &&
-                $response["data"]["error_code"] !== 31390
-            )
-        );
+        return !isset($response["data"]["error_code"]) || !in_array($response["data"]["error_code"], self::ignoreErrorCode);
     }
 
     public static function getBDUSS($cookie)

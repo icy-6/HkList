@@ -38,7 +38,7 @@ class AutoUpdate
                 require_once $file->getPathname();
                 if (!$debug) {
                     $newPath = $autoUpdatedPath . '/' . $file->getFilename();
-                    File::move($file->getPathname(), $newPath);
+                    if (File::exists($file->getPathname())) File::move($file->getPathname(), $newPath);
                 }
             } catch (Throwable $e) {
                 if (!str_contains($e->getMessage(), "正在索引中")) Log::error("AutoUpdate Failed:" . $e);
