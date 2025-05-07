@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\FileList;
+use App\Models\FileListsTemp;
 use App\Models\Record;
 use Exception;
 use Illuminate\Console\Command;
