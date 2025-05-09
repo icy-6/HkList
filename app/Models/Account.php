@@ -24,6 +24,8 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
+        "used_count",
+        "used_size",
         "total_size",
         "total_size_updated_at",
         "created_at",
@@ -39,8 +41,10 @@ class Account extends Model
         "switch",
         "reason",
         "prov",
+        // 历史以来总量
         "used_count",
         "used_size",
+        // 今日总量
         "total_size",
         "total_size_updated_at"
     ];

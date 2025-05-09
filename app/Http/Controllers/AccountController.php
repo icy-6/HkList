@@ -40,8 +40,6 @@ class AccountController extends Controller
                 }
             ], "file_lists.size")
             ->orderBy($request["column"] ?? "id", $request["direction"] ?? "asc")
-            ->addSelect('used_size as total_size')
-            ->addSelect('used_count as total_count')
             ->paginate($request["size"]);
 
         $max_download_daily_pre_account = config("hklist.limit.max_download_daily_pre_account");
