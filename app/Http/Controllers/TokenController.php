@@ -52,6 +52,7 @@ class TokenController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        $tokens = [];
         if ($request["type"] === "set") {
             $validator = Validator::make($request->all(), [
                 "token" => "required|string",
@@ -78,6 +79,7 @@ class TokenController extends Controller
                 "reason" => "",
                 "expires_at" => null
             ]);
+            $tokens[] = $request["token"];
         } else {
             $validator = Validator::make($request->all(), [
                 "generate_count" => "required|numeric",
@@ -95,6 +97,7 @@ class TokenController extends Controller
                     $i--;
                     continue;
                 }
+                $tokens[] = $token;
                 Token::query()->create([
                     "token" => $token,
                     "token_type" => $request["token_type"],
@@ -110,7 +113,9 @@ class TokenController extends Controller
             }
         }
 
-        return ResponseController::success();
+        return ResponseController::success([
+            "tokens" => $tokens
+        ]);
     }
 
     public function update(Request $request)
