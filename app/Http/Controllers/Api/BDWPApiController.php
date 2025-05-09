@@ -316,6 +316,9 @@ class BDWPApiController extends Controller
      */
     public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 100, $order = "filename")
     {
+        if (is_numeric(substr($surl, 0, 1))) $surl = substr($surl, 1);
+        $surl = "1" . $surl;
+
         $res = UtilsController::sendRequest(
             "BDWPApiController::getFileList",
             "post",

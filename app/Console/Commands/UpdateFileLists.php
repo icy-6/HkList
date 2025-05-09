@@ -36,9 +36,17 @@ class UpdateFileLists extends Command
         set_time_limit(0);
 
         // 2.2.10 修复文件列表表 fs_id 索引
-        $indexes = DB::select('SHOW INDEXES FROM file_lists WHERE Column_name = ?', ['fs_id']);
+//        $indexes = DB::select('SHOW INDEXES FROM file_lists WHERE Column_name = ?', ['fs_id']);
+        $indexes = "";
         if (empty($indexes)) {
             Cache::set("fs_id_indexing", true);
+
+            $total = FileList::query()->count();
+            $bar = $this->output->createProgressBar($total);
+            $bar->setBarCharacter('<comment>=</comment>');
+            $bar->setEmptyBarCharacter(' ');
+            $bar->setProgressCharacter('|');
+            $bar->setBarWidth(50);
 
             try {
                 Schema::dropIfExists("file_lists_temp");
@@ -63,6 +71,7 @@ class UpdateFileLists extends Command
 
                     foreach ($files as $file) {
                         $tempFile = $tempFiles[$file["fs_id"]] ?? null;
+                        $bar->advance();
 
                         // 如果不存在,插入数据
                         if (!$tempFile) {
@@ -104,7 +113,7 @@ class UpdateFileLists extends Command
                     }
 
                     $sql = "
-        UPDATE records 
+        UPDATE records
         SET fs_id = CASE id
             {$caseStatements}
             ELSE fs_id END
@@ -125,10 +134,14 @@ class UpdateFileLists extends Command
                 });
 
                 Cache::set("fs_id_indexing", false);
+
+                $bar->finish();
             } catch (Exception $e) {
                 Cache::set("fs_id_indexing", false);
                 throw $e;
             }
+        } else {
+            $this->info("索引已经完成,无需重复执行");
         }
     }
 }

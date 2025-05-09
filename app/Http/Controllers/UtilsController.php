@@ -215,13 +215,13 @@ class UtilsController extends Controller
         return !isset($response["data"]["error_code"]) || !in_array($response["data"]["error_code"], self::ignoreErrorCode);
     }
 
-    public static function getBDUSS($cookie)
+    public static function getBDUSS($cookie, $BDCLND = null)
     {
         preg_match('/BDUSS=([^;]*)/i', $cookie, $matches);
         $BDUSS = $matches[0] ?? "";
         preg_match('/STOKEN=([^;]*)/i', $cookie, $matches);
         $STOKEN = $matches[0] ?? "";
-        return $BDUSS . "; " . $STOKEN . ";";
+        return $BDUSS . "; " . $STOKEN . ";" . ($BDCLND ? ("BDCLND=" . $BDCLND . ";") : "");
     }
 
     public static function xor_encrypt($data, $key)
