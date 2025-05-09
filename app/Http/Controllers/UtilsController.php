@@ -221,7 +221,7 @@ class UtilsController extends Controller
         $BDUSS = $matches[0] ?? "";
         preg_match('/STOKEN=([^;]*)/i', $cookie, $matches);
         $STOKEN = $matches[0] ?? "";
-        return $BDUSS . "; " . $STOKEN . ";" . ($BDCLND ? ("BDCLND=" . $BDCLND . ";") : "");
+        return $BDUSS . "; " . $STOKEN . ";" . ($BDCLND ? ("BDCLND=" . urlencode($BDCLND) . ";") : "");
     }
 
     public static function xor_encrypt($data, $key)
