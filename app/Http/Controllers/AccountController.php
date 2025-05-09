@@ -19,6 +19,14 @@ class AccountController extends Controller
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
+        Account::query()
+            ->whereDate("total_size_updated_at", "<", now())
+            ->orWhereNull("total_size_updated_at")
+            ->update([
+                "total_size" => 0,
+                "total_size_updated_at" => now()
+            ]);
+
         $data = Account::query()
             ->withCount([
                 'records as today_count' => function ($query) {
