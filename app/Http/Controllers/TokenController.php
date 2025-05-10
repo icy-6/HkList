@@ -193,7 +193,7 @@ class TokenController extends Controller
     {
         $getLimit = ParseController::getLimit($request, true);
         $getLimitRes = $getLimit->getData(true);
-        if ($getLimitRes["code"] !== 200) return $getLimitRes;
+        if ($getLimitRes["code"] !== 200) return $getLimit;
         $getLimitData = $getLimitRes["data"];
 
         $token = $getLimitData["token"];

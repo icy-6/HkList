@@ -363,7 +363,9 @@ class ParseController extends Controller
 
         $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
         $proxy_password = config("hklist.parse.token_proxy_password");
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit) {
+        $now = now();
+
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit, &$now) {
             if ($item["message"] !== "请求成功") return $item;
 
             $isLimit = false;
@@ -379,7 +381,7 @@ class ParseController extends Controller
             }
 
             $account = Account::query()->find($item["account_id"]);
-            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday()) {
+            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday() || !$now->isToday()) {
                 $account->update([
                     "total_size" => 0,
                     "total_size_updated_at" => now()
@@ -391,6 +393,7 @@ class ParseController extends Controller
                     "total_size_updated_at" => now()
                 ]);
             }
+            $now = now();
             $account->update([
                 "switch" => !$isLimit,
                 "reason" => $isLimit ? "账号已限速" : ""
