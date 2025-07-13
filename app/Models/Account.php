@@ -12,6 +12,7 @@ class Account extends Model
         "cookie",
         "enterprise_cookie",
         "open_platform",
+        "open_platform_nas",
         "download_ticket",
     ];
 

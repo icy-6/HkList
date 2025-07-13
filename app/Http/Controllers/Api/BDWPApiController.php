@@ -143,14 +143,15 @@ class BDWPApiController extends Controller
         $res = UtilsController::sendRequest(
             "BDWPApiController::getAccessToken",
             "get",
-            "https://openapi.baidu.com/oauth/2.0/token",
+            "https://api.oplist.org/baiduyun/renewapi",
             [
                 "query" => [
-                    "grant_type" => "refresh_token",
-                    "refresh_token" => $refreshToken,
-                    // alist
-                    "client_id" => "iYCeC9g08h5vuP9UqvPHKKSVrKFXGa1v",
-                    "client_secret" => "jXiFMOPVPCWlO2M5CwWQzffpNPaGTRBG"
+                    "client_uid" => "",
+                    "client_key" => "",
+                    "driver_txt" => "baiduyun_go",
+                    "server_use" => "true",
+                    "secret_key" => "",
+                    "refresh_ui" => $refreshToken
                 ]
             ]
         );
@@ -161,13 +162,14 @@ class BDWPApiController extends Controller
         $accessToken = $data["data"];
         if (
             isset($accessToken["error"]) ||
-            isset($accessToken["error_description"])
+            isset($accessToken["error_description"]) ||
+            !isset($accessToken["refresh_token"])
         ) {
             return ResponseController::getAccessTokenFailed($accessToken["error"] ?? "未知", $accessToken["error_description"] ?? "未知");
         }
 
         return ResponseController::success([
-            "expires_at" => now()->addSeconds($accessToken["expires_in"])->getTimestamp(),
+            "expires_at" => now()->addSeconds($accessToken["expires_in"] ?? 2592000)->getTimestamp(),
             "access_token" => $accessToken["access_token"],
             "refresh_token" => $accessToken["refresh_token"],
         ]);
