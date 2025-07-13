@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class AccountController extends Controller
 {
@@ -58,39 +59,44 @@ class AccountController extends Controller
         return ResponseController::success($data);
     }
 
-    private static function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
-    {
-        // 获取账户信息
-        $accountInfo = BDWPApiController::getAccountInfo($accountType, $cookieOrAccessToken);
-        $accountInfoData = $accountInfo->getData(true);
-        if ($accountInfoData["code"] !== 200) return $accountInfo;
-        $accountInfoData = $accountInfoData["data"];
-
-        // 获取 svip 到期时间
-        $vipInfo = BDWPApiController::getSvipEndAt($accountType, $cookieOrAccessToken);
-        $vipInfoData = $vipInfo->getData(true);
-        if ($vipInfoData["code"] !== 200) return $vipInfo;
-        $vipInfoData = $vipInfoData["data"];
-
-        $expires_at = Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"));
-
-        $result = [
-            "baidu_name" => $accountInfoData["baidu_name"],
-            "uk" => $accountInfoData["uk"],
-            "account_type" => $accountType,
-            "account_data" => [
-                "vip_type" => $vipInfoData["vip_type"],
-                "expires_at" => $expires_at->format("Y-m-d H:i:s")
-            ],
-            "switch" => 1,
-            "reason" => "",
-            "prov" => null
-        ];
-
-        if ($accountType === "cookie") $result["account_data"]["cookie"] = $cookieOrAccessToken;
-
-        return ResponseController::success($result);
+private static function getCookieOrOpenPlatformInfo($accountType, $cookieOrAccessToken)
+{
+    // 兼容 open_platform_nas
+    if ($accountType === "open_platform_nas") {
+        $accountType = "open_platform";
     }
+
+    // 获取账户信息
+    $accountInfo = BDWPApiController::getAccountInfo($accountType, $cookieOrAccessToken);
+    $accountInfoData = $accountInfo->getData(true);
+    if ($accountInfoData["code"] !== 200) return $accountInfo;
+    $accountInfoData = $accountInfoData["data"];
+
+    // 获取 svip 到期时间
+    $vipInfo = BDWPApiController::getSvipEndAt($accountType, $cookieOrAccessToken);
+    $vipInfoData = $vipInfo->getData(true);
+    if ($vipInfoData["code"] !== 200) return $vipInfo;
+    $vipInfoData = $vipInfoData["data"];
+
+    $expires_at = \Illuminate\Support\Carbon::createFromTimestamp($vipInfoData["expires_at"], config("app.timezone"));
+
+    $result = [
+        "baidu_name" => $accountInfoData["baidu_name"],
+        "uk" => $accountInfoData["uk"],
+        "account_type" => $accountType,
+        "account_data" => [
+            "vip_type" => $vipInfoData["vip_type"],
+            "expires_at" => $expires_at->format("Y-m-d H:i:s")
+        ],
+        "switch" => 1,
+        "reason" => "",
+        "prov" => null
+    ];
+
+    if ($accountType === "cookie") $result["account_data"]["cookie"] = $cookieOrAccessToken;
+
+    return ResponseController::success($result);
+}
 
     private static function getOpenPlatformInfo($refresh_token)
     {
@@ -106,21 +112,59 @@ class AccountController extends Controller
         if ($accountInfoData["code"] !== 200) return $accountInfo;
         $accountInfoData = $accountInfoData["data"];
 
+        $accountData = [
+            "access_token" => $accessTokenData["access_token"],
+            "refresh_token" => $accessTokenData["refresh_token"],
+            "token_expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s"),
+            ...$accountInfoData["account_data"]
+        ];
+
         return ResponseController::success([
             "baidu_name" => $accountInfoData["baidu_name"],
             "uk" => $accountInfoData["uk"],
             "account_type" => "open_platform",
-            "account_data" => [
-                "access_token" => $accessTokenData["access_token"],
-                "refresh_token" => $accessTokenData["refresh_token"],
-                "token_expires_at" => Carbon::createFromTimestamp($accessTokenData["expires_at"], config("app.timezone"))->format("Y-m-d H:i:s"),
-                ...$accountInfoData["account_data"]
-            ],
+            "account_data" => $accountData,
             "switch" => 1,
             "reason" => "",
             "prov" => null
         ]);
     }
+
+    private static function getOpenPlatformInfo_nas($access_token, $device_id, $dlink_cookie)
+{   
+    // 直接使用用户提供的access_token获取账户信息
+    $accountInfo = self::getCookieOrOpenPlatformInfo("open_platform_nas", $access_token);
+    $accountInfoData = $accountInfo->getData(true);
+    
+    // 检查获取账户信息是否成功
+    if ($accountInfoData["code"] !== 200) return $accountInfo;
+    
+    // 提取需要的账户数据
+    $accountInfoData = $accountInfoData["data"];
+
+    $accountData = [
+        "access_token" => $access_token,  // 直接使用传入的access_token
+        ...$accountInfoData["account_data"]  // 合并其他账户数据
+    ];
+
+    // 如果提供了 device_id，则添加到 account_data 中
+    if ($device_id !== null) {
+        $accountData["device_id"] = $device_id;
+    }
+
+    // 添加 dlink_cookie 到 account_data 中
+    $accountData["dlink_cookie"] = $dlink_cookie;
+
+    return ResponseController::success([
+        "baidu_name" => $accountInfoData["baidu_name"],
+        "uk" => $accountInfoData["uk"],
+        "account_type" => "open_platform_nas",
+        "account_data" => $accountData,
+        "switch" => 1,      // 默认开启状态
+        "reason" => "",      // 原因字段为空
+        "prov" => null       // 省份信息为空
+    ]);
+}
 
     private static function getEnterpriseInfo($cookie, $cid, $dlink_cookie = null)
     {
@@ -259,6 +303,7 @@ class AccountController extends Controller
         return match ($request["account_type"]) {
             "cookie" => self::insert_cookie($request),
             "open_platform" => self::insert_open_platform($request),
+            "open_platform_nas" => self::insert_open_platform_nas($request),
             "enterprise_cookie" => self::insert_enterprise_cookie($request),
             "download_ticket" => self::insert_download_ticket($request),
         };
@@ -300,6 +345,7 @@ class AccountController extends Controller
             "account_data" => "required|array",
             "account_data.*" => "required|array",
             "account_data.*.refresh_token" => "required|string",
+
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
@@ -323,6 +369,69 @@ class AccountController extends Controller
             "have_repeat" => $have_repeat
         ]);
     }
+
+private function insert_open_platform_nas(Request $request)
+{
+    // 引入日志
+    // use Illuminate\Support\Facades\Log;
+
+    Log::info('insert_open_platform_nas 请求参数:', $request->all());
+
+    $validator = Validator::make($request->all(), [
+        "account_data" => "required|array",
+        "account_data.*" => "required|array",
+        "account_data.*.access_token" => "required|string",
+        "account_data.*.device_id" => "required|string",
+        "account_data.*.dlink_cookie" => "required|string",
+    ]);
+    
+    if ($validator->fails()) {
+        Log::warning('参数校验失败:', $validator->errors()->toArray());
+        return ResponseController::paramsError($validator->errors());
+    }
+
+    $have_repeat = false;
+    foreach ($request["account_data"] as $accountDatum) {
+        Log::info('处理 accountDatum:', $accountDatum);
+
+        $accountInfo = self::getOpenPlatformInfo_nas($accountDatum["access_token"], $accountDatum["device_id"], $accountDatum["dlink_cookie"]);
+        $accountInfoData = $accountInfo->getData(true);
+
+        Log::info('getOpenPlatformInfo_nas 返回:', $accountInfoData);
+
+        if ($accountInfoData["code"] !== 200) {
+            Log::error('获取 open_platform_nas 账户信息失败:', $accountInfoData);
+            return $accountInfo;
+        }
+        
+        $accountInfoData = $accountInfoData["data"];
+
+
+
+        // 检查是否已存在相同 UK 的账户
+        $account = Account::query()->firstWhere([
+            "account_type" => "open_platform_nas", 
+            "uk" => $accountInfoData["uk"]
+        ]);
+        
+        if ($account) {
+            Log::info('发现重复账户:', ['uk' => $accountInfoData["uk"]]);
+            $have_repeat = true;
+            continue;
+        }
+
+        // 创建新账户记录
+        $created = Account::query()->create($accountInfoData);
+        Log::info('新账户已创建:', $created->toArray());
+    }
+
+    if ($have_repeat) {
+        Log::info('存在重复账户，部分未插入');
+    }
+
+    // 你可以根据实际需求返回不同的响应
+    return ResponseController::success('操作完成');
+}
 
     private function insert_enterprise_cookie(Request $request)
     {
@@ -443,9 +552,17 @@ class AccountController extends Controller
             ->get();
 
         foreach ($accounts as $account) {
+            $accountData = $request["account_data"];
+            
+            // 特殊处理 open_platform_nas 类型的 device_id
+            if ($request["account_type"] === "open_platform_nas" && isset($accountData["device_id"])) {
+                // 确保 device_id 被保留在 account_data 中
+                $accountData["device_id"] = $accountData["device_id"];
+            }
+            
             $account->update([
                 "account_type" => $request["account_type"],
-                "account_data" => $request["account_data"],
+                "account_data" => $accountData,
             ]);
         }
 
@@ -473,6 +590,7 @@ class AccountController extends Controller
             $data = match ($account["account_type"]) {
                 "cookie" => self::getCookieOrOpenPlatformInfo("cookie", $account_data["cookie"]),
                 "open_platform" => self::getOpenPlatformInfo($account_data["refresh_token"]),
+                "open_platform_nas" => self::getOpenPlatformInfo_nas($account_data["access_token"], $account_data["device_id"], $account_data["dlink_cookie"]),
                 "enterprise_cookie" => self::getEnterpriseInfo($account_data["cookie"], $account_data["cid"], $account_data["dlink_cookie"] ?? null),
                 "download_ticket" => self::getDownLoadTicketInfo($account_data["surl"], $account_data["pwd"], $account_data["dir"], $account_data["save_cookie"], $account_data["cid"], $account_data["download_cookie"])
             };
@@ -486,54 +604,60 @@ class AccountController extends Controller
         return ResponseController::success();
     }
 
-    public function checkBanStatus(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            "id" => "required|array",
-            "id.*" => "required|numeric",
-        ]);
-        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+public function checkBanStatus(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        "id" => "required|array",
+        "id.*" => "required|numeric",
+    ]);
+    if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        $accounts = Account::query()
-            ->whereIn("id", $request["id"])
-            ->get();
+    $accounts = Account::query()
+        ->whereIn("id", $request["id"])
+        ->get();
 
-        $res = [];
-        foreach ($accounts as $account) {
-            $account_data = $account["account_data"];
-            $account_type = $account["account_type"];
+    $res = [];
+    foreach ($accounts as $account) {
+        $account_data = $account["account_data"];
+        $account_type = $account["account_type"];
 
-            if ($account_type === "cookie") {
-                $data = [
-                    BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
-                ];
-            } else if ($account_type === "enterprise_cookie") {
-                $data = [
-                    BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
-                ];
-                if (!empty($account_data["dlink_cookie"])) $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
-            } else if ($account_type === "open_platform") {
-                $data = [
-                    BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
-                ];
-            } else if ($account_type === "download_ticket") {
-                $data = [
-                    BDWPApiController::getAccountAPL("cookie", $account_data["save_cookie"], $account_data["cid"]),
-                    BDWPApiController::getAccountAPL("cookie", $account_data["download_cookie"])
-                ];
-            } else {
-                return ResponseController::unknownAccountType();
-            }
-
-            $res[] = [
-                "id" => $account["id"],
-                "account_type" => $account_type,
-                "status" => array_map(fn($item) => $item->getData(true), $data)
+        if ($account_type === "cookie") {
+            $data = [
+                BDWPApiController::getAccountAPL("cookie", $account_data["cookie"])
             ];
+        } else if ($account_type === "enterprise_cookie") {
+            $data = [
+                BDWPApiController::getAccountAPL("cookie", $account_data["cookie"], $account_data["cid"])
+            ];
+            if (!empty($account_data["dlink_cookie"])) $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
+        } else if ($account_type === "open_platform") {
+            $data = [
+                BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
+            ];
+        } else if ($account_type === "open_platform_nas") {
+            $data = [
+                BDWPApiController::getAccountAPL("open_platform", $account_data["access_token"])
+            ];
+            // 添加 dlink_cookie 到检查列表中
+            $data[] = BDWPApiController::getAccountAPL("cookie", $account_data["dlink_cookie"]);
+        } else if ($account_type === "download_ticket") {
+            $data = [
+                BDWPApiController::getAccountAPL("cookie", $account_data["save_cookie"], $account_data["cid"]),
+                BDWPApiController::getAccountAPL("cookie", $account_data["download_cookie"])
+            ];
+        } else {
+            return ResponseController::unknownAccountType();
         }
 
-        return ResponseController::success($res);
+        $res[] = [
+            "id" => $account["id"],
+            "account_type" => $account_type,
+            "status" => array_map(fn($item) => $item->getData(true), $data)
+        ];
     }
+
+    return ResponseController::success($res);
+}
 
     public function getCidInfo(Request $request)
     {

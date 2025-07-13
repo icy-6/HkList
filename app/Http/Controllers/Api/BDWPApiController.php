@@ -19,53 +19,58 @@ class BDWPApiController extends Controller
      *     "vip_type":0
      * }
      */
-    public static function getAccountInfo($accountType, $cookieOrAccessToken)
-    {
-        $req = [
-            "headers" => ["User-Agent" => config("hklist.fake_user_agent")],
-            "query" => ["method" => "uinfo"]
-        ];
+public static function getAccountInfo($accountType, $cookieOrAccessToken)
+{
+    // 兼容 open_platform_nas，实际请求时统一用 open_platform
+    if ($accountType === "open_platform_nas") {
+        $accountType = "open_platform";
+    }
 
-        if ($accountType === "cookie") {
-            $req["headers"]["Cookie"] = $cookieOrAccessToken;
-        } else if ($accountType === "open_platform") {
-            $req["query"]["access_token"] = $cookieOrAccessToken;
-        } else {
-            return ResponseController::paramsError([
-                "errors" => [
-                    "accountType" => [
-                        "The accountType is invalid."
-                    ]
+    $req = [
+        "headers" => ["User-Agent" => config("hklist.fake_user_agent")],
+        "query" => ["method" => "uinfo"]
+    ];
+
+    if ($accountType === "cookie") {
+        $req["headers"]["Cookie"] = $cookieOrAccessToken;
+    } else if ($accountType === "open_platform") {
+        $req["query"]["access_token"] = $cookieOrAccessToken;
+    } else {
+        return ResponseController::paramsError([
+            "errors" => [
+                "accountType" => [
+                    "The accountType is invalid."
                 ]
-            ]);
-        }
-
-        $res = UtilsController::sendRequest(
-            "BDWPApiController::getAccountInfo",
-            "get",
-            "https://pan.baidu.com/rest/2.0/xpan/nas",
-            $req
-        );
-
-        $data = $res->getData(true);
-        if ($data["code"] !== 200) return $res;
-
-        $userInfo = $data["data"];
-        if (
-            !isset($userInfo["errno"]) ||
-            $userInfo["errno"] !== 0
-        ) {
-            return ResponseController::getAccountInfoFailed($userInfo["errno"] ?? "未知", $userInfo["errmsg"] ?? "未知");
-        }
-
-        return ResponseController::success([
-            "avatar_url" => $userInfo["avatar_url"],
-            "baidu_name" => $userInfo["baidu_name"],
-            "netdisk_name" => $userInfo["netdisk_name"],
-            "uk" => $userInfo["uk"],
-            "vip_type" => $userInfo["vip_type"],
+            ]
         ]);
     }
+
+    $res = UtilsController::sendRequest(
+        "BDWPApiController::getAccountInfo",
+        "get",
+        "https://pan.baidu.com/rest/2.0/xpan/nas",
+        $req
+    );
+
+    $data = $res->getData(true);
+    if ($data["code"] !== 200) return $res;
+
+    $userInfo = $data["data"];
+    if (
+        !isset($userInfo["errno"]) ||
+        $userInfo["errno"] !== 0
+    ) {
+        return ResponseController::getAccountInfoFailed($userInfo["errno"] ?? "未知", $userInfo["errmsg"] ?? "未知");
+    }
+
+    return ResponseController::success([
+        "avatar_url" => $userInfo["avatar_url"],
+        "baidu_name" => $userInfo["baidu_name"],
+        "netdisk_name" => $userInfo["netdisk_name"],
+        "uk" => $userInfo["uk"],
+        "vip_type" => $userInfo["vip_type"],
+    ]);
+}
 
     /**
      * {
@@ -316,7 +321,7 @@ class BDWPApiController extends Controller
      *     }[]
      * }
      */
-    public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 100, $order = "filename")
+    public static function getFileList($surl, $pwd = "", $dir = "/", $page = 1, $num = 1000, $order = "filename")
     {
         if (is_numeric(substr($surl, 0, 1))) $surl = substr($surl, 1);
         $surl = "1" . $surl;
@@ -401,6 +406,7 @@ class BDWPApiController extends Controller
             "uk" => $response["data"]["uk"],
             "shareid" => $response["data"]["shareid"],
             "randsk" => $seckeyData["data"]["seckey"],
+            "uname" => $response["data"]["uname"],
             "list" => collect($response["data"]["list"])->map(function ($item) {
                 return [
                     "category" => (int)$item["category"],

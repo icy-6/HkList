@@ -13,6 +13,7 @@ use App\Http\Controllers\Parsers\V6Controller;
 use App\Http\Controllers\Parsers\V7Controller;
 use App\Models\Account;
 use App\Models\FileList;
+use App\Models\Proxy;
 use App\Models\Record;
 use App\Models\Token;
 use Illuminate\Http\Request;
@@ -141,7 +142,7 @@ class ParseController extends Controller
 
     public static function getAccountType($token)
     {
-        return match ($token === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.parse_mode")) {
+        return match ($token === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.token_parse_mode")) {
             // 正常模式
             0, 1, 2 => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
@@ -333,7 +334,7 @@ class ParseController extends Controller
             if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
         }
 
-        $parse_mode = $request["token"] === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.parse_mode");
+        $parse_mode = $request["token"] === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.token_parse_mode");
         $response = match ($parse_mode) {
             0 => V0Controller::request($request),
             1 => V1Controller::request($request),
@@ -362,17 +363,44 @@ class ParseController extends Controller
         }
 
         $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
-        $proxy_password = config("hklist.parse.token_proxy_password");
-        $now = now();
+        $proxy_password = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_password") : config("hklist.parse.token_proxy_password");
 
-        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit, &$now) {
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit) {
             if ($item["message"] !== "请求成功") return $item;
+
+            $account = Account::query()->find($item["account_id"]);
+            $newProxy = Proxy::query()
+                ->inRandomOrder()
+                ->firstWhere([
+                    "account_id" => $account["id"],
+                    "type" => "proxy",
+                    "enable" => true
+                ]);
 
             $isLimit = false;
             foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
-            $item["urls"] = collect($item["urls"])->filter(fn($url) => !str_contains($url, "ant.baidu.com"));
-            if ($proxy_host !== "") $item["urls"] = $item["urls"]->map(fn($url) => $proxy_host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $proxy_password))));
-            $item["urls"] = $item["urls"]->values()->toArray();
+
+            $item["urls"] = collect($item["urls"])
+                ->filter(fn($url) => !str_contains($url, "ant.baidu.com"))
+                ->reverse()
+                ->map(function ($url) use ($proxy_host, $proxy_password, $newProxy) {
+                    if ($newProxy) {
+                        $arr = explode("@", $newProxy["proxy"]);
+                        if (!empty($arr[0]) || !empty($arr[1])) {
+                            $host = $arr[0];
+                            $password = $arr[1];
+                            return $host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $password)));
+                        }
+                    }
+
+                    if ($proxy_host !== "") {
+                        return $proxy_host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $proxy_password)));
+                    }
+
+                    return $url;
+                })
+                ->values()
+                ->toArray();
 
             if (!$remove_limit) {
                 $file = FileList::query()->firstWhere([
@@ -380,20 +408,20 @@ class ParseController extends Controller
                 ]);
             }
 
-            $account = Account::query()->find($item["account_id"]);
-            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday() || !$now->isToday()) {
+            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday()) {
                 $account->update([
                     "total_size" => 0,
                     "total_size_updated_at" => now()
                 ]);
             }
+
             if (!$remove_limit) {
                 $account->update([
                     "total_size" => $account["total_size"] + $file["size"],
                     "total_size_updated_at" => now()
                 ]);
             }
-            $now = now();
+
             $account->update([
                 "switch" => !$isLimit,
                 "reason" => $isLimit ? "账号已限速" : ""
@@ -401,28 +429,26 @@ class ParseController extends Controller
 
             if ($isLimit) {
                 $item["message"] = "获取成功,但下载链接已限速,推荐重新解析";
-            } else {
+            } else if (!$remove_limit) {
                 // 插入记录
-                if (!$remove_limit) {
-                    Record::query()->create([
-                        "ip" => UtilsController::getIp($request),
-                        "fingerprint" => $request["rand2"] ?? "",
-                        "fs_id" => $file["id"],
-                        "urls" => $item["urls"],
-                        "ua" => $item["ua"],
-                        "token_id" => $token["id"],
-                        "account_id" => $item["account_id"],
-                    ]);
-                    // 删除指定天数之前的记录
-                    Record::query()->where("created_at", "<", now()->subDays(config("hklist.general.save_histories_day")))->delete();
-                    // 如果当前卡密是普通类型就自增
-                    if ($token["token_type"] === "normal") {
-                        $token->increment("used_size", $file["size"]);
-                        $token->increment("used_count");
-                    }
-                    $account->increment("used_size", $file["size"]);
-                    $account->increment("used_count");
+                Record::query()->create([
+                    "ip" => UtilsController::getIp($request),
+                    "fingerprint" => $request["rand2"] ?? "",
+                    "fs_id" => $file["id"],
+                    "urls" => $item["urls"],
+                    "ua" => $item["ua"],
+                    "token_id" => $token["id"],
+                    "account_id" => $item["account_id"],
+                ]);
+                // 删除指定天数之前的记录
+                Record::query()->where("created_at", "<", now()->subDays(config("hklist.general.save_histories_day")))->delete();
+                // 如果当前卡密是普通类型就自增
+                if ($token["token_type"] === "normal") {
+                    $token->increment("used_size", $file["size"]);
+                    $token->increment("used_count");
                 }
+                $account->increment("used_size", $file["size"]);
+                $account->increment("used_count");
             }
 
             unset($item["account_id"]);
