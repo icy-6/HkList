@@ -426,6 +426,119 @@ public static function getAccountInfo($accountType, $cookieOrAccessToken)
         ]);
     }
 
+    public static function getFileList1($surl, $pwd = "", $page = 1, $num = 1000, $order = "filename", $fid)
+    {
+        if (is_numeric(substr($surl, 0, 1))) $surl = substr($surl, 1);
+        $surl = "1" . $surl;
+
+        $res = UtilsController::sendRequest(
+            "BDWPApiController::getFileList",
+            "post",
+            "https://pan.baidu.com/share/wxlist",
+            [
+                "headers" => [
+                    "User-Agent" => config("hklist.fake_wx_user_agent"),
+                    "Cookie" => config("hklist.fake_cookie")
+                ],
+                "query" => [
+                    "channel" => "weixin",
+                    "version" => "2.9.6",
+                    "clienttype" => 25,
+                    "web" => 1,
+                    "qq-pf-to" => "pcqq.c2c"
+                ],
+                "form_params" => [
+                    "shorturl" => $surl,
+                    "pwd" => $pwd,
+                    "page" => $page,
+                    "num" => min($num, 100),
+                    "order" => $order,
+                    "fid" => $fid
+                ]
+            ]
+        );
+
+        // 在这里添加日志
+        Log::info('getFileList1 百度原始返回', ['response' => $res]);
+
+        $data = $res->getData(true);
+        if ($data["code"] !== 200) return $res;
+
+        $response = $data["data"];
+        if (
+            !isset($response["errno"]) ||
+            !isset($response["errtype"])
+        ) {
+            return ResponseController::getFileListFailed($response["errno"] ?? "未知", $response["errtype"] ?? "未知");
+        }
+
+        $errno = $response["errno"];
+        $errtype = $response["errtype"];
+
+        if ($errno !== 0) {
+            if ($errno === -130) {
+                $info = match ($errtype) {
+                    0 => "啊哦，你来晚了，分享的文件已经被删除了，下次要早点哟。",
+                    1 => "啊哦，你来晚了，分享的文件已经被取消了，下次要早点哟。",
+                    2 => "此链接分享内容暂时不可访问",
+                    3 => "此链接分享内容可能因为涉及侵权、色情、反动、低俗等信息，无法访问！",
+                    5 => "啊哦！链接错误没找到文件，请打开正确的分享链接!",
+                    10 => "啊哦，来晚了，该分享文件已过期",
+                    11 => "由于访问次数过多，该分享链接已失效",
+                    12 => "因该分享含有自动备份文件夹，暂无法查看",
+                    15 => "系统升级，链接暂时无法查看，升级完成后恢复正常。",
+                    17 => "该链接访问范围受限，请使用正常的访问方式",
+                    123 => "该链接已超过访问人数上限，可联系分享者重新分享",
+                    124 => "您访问的链接已被冻结，可联系分享者进行激活",
+                    "mis_105" => "surl 错误",
+                    "mispw_9", "mispwd-9" => "提取码错误",
+                    "mis_2", "mis_4" => "路径错误",
+                    default => null
+                };
+                return ResponseController::getFileListFailed($errno, $info ?? $errtype);
+            } else if ($errno === 2) {
+                return ResponseController::getFileListFailed(999, "surl错误");
+            } else if ($errno === -6) {
+                return ResponseController::getFileListFailed($errno, "请不要使用私密链接");
+            }
+
+            return ResponseController::getFileListFailed($errno, $errtype);
+        }
+
+        // 修正：优先取data.list，如果为空再取顶层list
+        $realData = $response["data"];
+        $list = $realData["list"] ?? [];
+        if (empty($list) && isset($response["list"]) && is_array($response["list"]) && count($response["list"]) > 0) {
+            $list = $response["list"];
+        }
+        $seckey = self::decodeSecKey($realData["seckey"]);
+        $seckeyData = $seckey->getData(true);
+        if ($seckeyData["code"] !== 200) return $seckey;
+
+        return ResponseController::success([
+            "uk" => $realData["uk"] ?? null,
+            "shareid" => $realData["shareid"] ?? null,
+            "randsk" => $seckeyData["data"]["seckey"] ?? null,
+            "uname" => $realData["uname"] ?? null,
+            "list" => collect($list)->map(function ($item) {
+                return [
+                    "category" => (int)$item["category"],
+                    "fs_id" => (double)$item["fs_id"],
+                    "is_dir" => ((int)$item["isdir"]) === 1,
+                    "local_ctime" => (double)$item["local_ctime"],
+                    "local_mtime" => (double)$item["local_mtime"],
+                    "md5" => $item["md5"] ?? "",
+                    "path" => $item["path"],
+                    "server_ctime" => (double)$item["server_ctime"],
+                    "server_mtime" => (double)$item["server_mtime"],
+                    "server_filename" => $item["server_filename"],
+                    "size" => (double)$item["size"],
+                    "dlink" => $item["dlink"] ?? ""
+                ];
+            })->toArray(),
+        ]);
+    }
+
     /**
      * {
      *     "vcode_str": "xxx",

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\BDWPApiController;
 use App\Http\Controllers\FreeParsers\V0Controller;
+use App\Http\Controllers\Parsers\ApiController;
 use App\Http\Controllers\Parsers\V1Controller;
 use App\Http\Controllers\Parsers\V2Controller;
 use App\Http\Controllers\Parsers\V3Controller;
@@ -126,7 +127,11 @@ class ParseController extends Controller
                 "pwd" => $request["pwd"],
                 "fs_id" => $item["fs_id"],
                 "size" => $item["size"],
-                "filename" => $item["server_filename"]
+                "filename" => $item["server_filename"],
+                // 新增字段
+                "uk" => $fileListData["uk"] ?? null,
+                "shareid" => $fileListData["shareid"] ?? null,
+                "randsk" => $fileListData["randsk"] ?? null,
             ])
             ->toArray();
 
@@ -146,7 +151,7 @@ class ParseController extends Controller
             // 正常模式
             0, 1, 2 => ResponseController::success(["account_type" => ["cookie"], "account_data" => ["vip_type" => "超级会员"]]),
             // 开放平台
-            3, 4 => ResponseController::success(["account_type" => ["open_platform"], "account_data" => ["vip_type" => "超级会员"]]),
+            3, 4, 8, 9 => ResponseController::success(["account_type" => ["open_platform", "open_platform_nas"], "account_data" => []]),
             // 企业平台
             5, 7 => ResponseController::success(["account_type" => ["enterprise_cookie"], "account_data" => []]),
             // 下载卷接口
@@ -227,44 +232,52 @@ class ParseController extends Controller
         return ResponseController::success($account);
     }
 
-    private static function refreshExpiredAccount(Account $account, $needPro)
-    {
-        $account_type = $account["account_type"];
-        $account_data = $account["account_data"];
+private static function refreshExpiredAccount(Account $account, $needPro)
+{
+    $account_type = $account["account_type"];
+    $account_data = $account["account_data"];
 
-        if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
-            // 忽略普通用户
-            if ($account_type === "cookie" && $account_data["vip_type"] === "普通用户") return ResponseController::success(["isExpired" => false]);
-            $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
-            if (!$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
-        } else if ($account_type === "open_platform") {
-            $token_expires_at = Carbon::parse($account_data["token_expires_at"], config("app.timezone"));
-            $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
-            if (!$token_expires_at->isPast() && !$expires_at->isPast()) return ResponseController::success(["isExpired" => false]);
-        } else if ($account_type === "download_ticket") {
-            // download_ticket 不校验是否过期
-            return ResponseController::success(["isExpired" => false]);
-        }
-
-        $updateInfo = AccountController::updateInfo(new Request(), ["id" => [$account["id"]]]);
-        $updateInfoData = $updateInfo->getData(true);
-        // 判断解析模式 需要是超级会员的模式
-        if ($needPro) {
-            // 判断账号现在的类型
-            $newAccount = Account::query()->find($account["id"]);
-            if ($newAccount["account_data"]["vip_type"] !== "超级会员") {
-                $account->update(["switch" => false, "reason" => "会员过期"]);
-                return ResponseController::success(["isExpired" => true]);
-            }
-        }
-
-        if ($updateInfoData["code"] === 200) {
-            $account->update(["switch" => false, "reason" => "账号过期"]);
-            return ResponseController::success(["isExpired" => true]);
-        }
-
+    // 新增：open_platform_nas 不做过期判断
+    if ($account_type === "open_platform_nas") {
         return ResponseController::success(["isExpired" => false]);
     }
+
+    if ($account_type === "cookie" || $account_type === "enterprise_cookie") {
+        // 忽略普通用户
+        if ($account_type === "cookie" && $account_data["vip_type"] === "普通用户") 
+            return ResponseController::success(["isExpired" => false]);
+        $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
+        if (!$expires_at->isPast()) 
+            return ResponseController::success(["isExpired" => false]);
+    } else if ($account_type === "open_platform") {
+        $token_expires_at = Carbon::parse($account_data["token_expires_at"], config("app.timezone"));
+        $expires_at = Carbon::parse($account_data["expires_at"], config("app.timezone"));
+        if (!$token_expires_at->isPast() && !$expires_at->isPast()) 
+            return ResponseController::success(["isExpired" => false]);
+    } else if ($account_type === "download_ticket") {
+        // download_ticket 不校验是否过期
+        return ResponseController::success(["isExpired" => false]);
+    }
+
+    $updateInfo = AccountController::updateInfo(new Request(), ["id" => [$account["id"]]]);
+    $updateInfoData = $updateInfo->getData(true);
+    // 判断解析模式 需要是超级会员的模式
+    if ($needPro) {
+        // 判断账号现在的类型
+        $newAccount = Account::query()->find($account["id"]);
+        if ($newAccount["account_data"]["vip_type"] !== "超级会员") {
+            $account->update(["switch" => false, "reason" => "会员过期"]);
+            return ResponseController::success(["isExpired" => true]);
+        }
+    }
+
+    if ($updateInfoData["code"] === 200) {
+        $account->update(["switch" => false, "reason" => "账号过期"]);
+        return ResponseController::success(["isExpired" => true]);
+    }
+
+    return ResponseController::success(["isExpired" => false]);
+}
 
     public function getDownloadLinks(Request $request)
     {
@@ -458,4 +471,331 @@ class ParseController extends Controller
 
         return ResponseController::success($responseData);
     }
+
+    public function getDownloadLinksByDlink(Request $request)
+    {
+        set_time_limit(0);
+
+        // 第一步：只校验 token 和 dlink
+        $validator = Validator::make($request->all(), [
+            "token" => "required|string",
+            "dlink" => "required|string"
+        ]);
+        if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        // 新增：dlink参数解析与补全
+        if ($request->has('dlink')) {
+            //\Log::info('开始解析dlink参数', ['dlink' => $request["dlink"]]);
+            $dlink = $request["dlink"];
+            $urlInfo = parse_url($dlink);
+            $queryArr = [];
+            if (isset($urlInfo["query"])) {
+                parse_str($urlInfo["query"], $queryArr);
+                //\Log::info('dlink query参数解析结果', ['queryArr' => $queryArr]);
+            }
+            // shareinfo 处理
+            if (isset($queryArr["shareinfo"])) {
+                $shareinfo = $queryArr["shareinfo"];
+                $shareinfoArr = explode(",", $shareinfo);
+                $surl = isset($shareinfoArr[0]) ? ("1" . $shareinfoArr[0]) : null;
+                $pwd = $shareinfoArr[1] ?? null;
+                $randsk = isset($shareinfoArr[2]) ? urldecode($shareinfoArr[2]) : null;
+                // fid 取逗号后数字部分
+                $fid = null;
+                if (isset($queryArr["fid"])) {
+                    $fidParts = explode("-", $queryArr["fid"]);
+                    $fid = end($fidParts);
+                }
+                $shareid = $queryArr["shareid"] ?? null;
+                //\Log::info('shareinfo解析结果', [
+                    //'surl' => $surl,
+                    //'pwd' => $pwd,
+                    //'randsk' => $randsk,
+                    //'fid' => $fid,
+                    //'shareid' => $shareid
+                //]);
+                // 调用getFileList1获取文件信息
+                $fileList = BDWPApiController::getFileList1($surl, $pwd, 1, 100, 'time', $fid);
+                $response = $fileList->getData(true);
+                //\Log::info('getFileList1返回数据', ['fileListData' => $response]);
+                if ($response["code"] !== 200) return $fileList;
+                $response = $response["data"];
+                // 存入数据库（参考getFileList）
+                $data = collect($response["list"])
+                    ->filter(fn($item) => !$item["is_dir"])
+                    ->map(fn($item) => [
+                        "surl" => $surl,
+                        "pwd" => $pwd,
+                        "fs_id" => (string)$item["fs_id"],
+                        "size" => (int)$item["size"],
+                        "filename" => $item["server_filename"],
+                        "uk" => $response["uk"] ?? null,
+                        "shareid" => $response["shareid"] ?? null,
+                        "randsk" => $response["randsk"] ?? null,
+                    ])
+                    ->toArray();
+                //\Log::info('补全参数并写入数据库的数据', ['data' => $data]);
+                $result = FileList::query()->upsert($data, ["fs_id"], ["size", "filename", "uk", "shareid", "randsk", "surl", "pwd"]);
+                //\Log::info('upsert返回值', ['result' => $result, 'data' => $data]);
+                // 补全request参数
+                $request->merge([
+                    "surl" => $surl,
+                    "pwd" => $pwd,
+                    "randsk" => $response["randsk"] ?? $randsk, // 优先用接口返回的randsk
+                    "shareid" => $shareid,
+                    "fs_id" => array_map(fn($item) => $item["fs_id"], $data),
+                    "uk" => $response["uk"] ?? null,
+                    "dir" => "/"
+                ]);
+                //\Log::info('最终补全到request的参数', $request->only(['surl','pwd','randsk','shareid','fs_id','uk','dir']));
+            } else {
+                // 无shareinfo，尝试用shareid查库
+                if (isset($queryArr["shareid"])) {
+                    $shareid = $queryArr["shareid"];
+                    $file = FileList::query()->firstWhere(["shareid" => $shareid]);
+                    // 新增重试机制
+                    if (!$file) {
+                        usleep(500000); // 0.5秒
+                        $file = FileList::query()->firstWhere(["shareid" => $shareid]);
+                        if (!$file) {
+                            usleep(500000); // 再等0.5秒
+                            $file = FileList::query()->firstWhere(["shareid" => $shareid]);
+                        }
+                    }
+                    //\Log::info('无shareinfo，尝试用shareid查库', ['shareid' => $shareid, 'file' => $file]);
+                    if ($file) {
+                        // 用数据库中的参数调用getFileList1获取最新文件信息
+                        $surl = $file["surl"];
+                        $pwd = $file["pwd"];
+                        // $fid = $file["fs_id"];
+                        $fid = null;
+                        if (isset($queryArr["fid"])) {
+                            $fidParts = explode("-", $queryArr["fid"]);
+                            $fid = end($fidParts);
+                        }
+                        $fileList = BDWPApiController::getFileList1($surl, $pwd, 1, 100, 'time', $fid);
+                        $response = $fileList->getData(true);
+                        if ($response["code"] !== 200) return $fileList;
+                        $response = $response["data"];
+                        // 存入数据库
+                        $data = collect($response["list"])
+                            ->filter(fn($item) => !$item["is_dir"])
+                            ->map(fn($item) => [
+                                "surl" => $surl,
+                                "pwd" => $pwd,
+                                "fs_id" => (string)$item["fs_id"],
+                                "size" => (int)$item["size"],
+                                "filename" => $item["server_filename"],
+                                "uk" => $response["uk"] ?? null,
+                                "shareid" => $response["shareid"] ?? null,
+                                "randsk" => $response["randsk"] ?? null,
+                            ])
+                            ->toArray();
+                        FileList::query()->upsert($data, ["fs_id"], ["size", "filename", "uk", "shareid", "randsk", "surl", "pwd"]);
+                        // 用接口返回的参数补全request
+                        $request->merge([
+                            "surl" => $surl,
+                            "pwd" => $pwd,
+                            "randsk" => $response["randsk"] ?? $file["randsk"],
+                            "shareid" => $response["shareid"] ?? $file["shareid"],
+                            "fs_id" => array_map(fn($item) => $item["fs_id"], $data),
+                            "uk" => $response["uk"] ?? $file["uk"],
+                            "dir" => "/"
+                        ]);
+                        //\Log::info('最终补全到request的参数', $request->only(['surl','pwd','randsk','shareid','fs_id','uk','dir']));
+                    }
+                }
+            }
+        }
+
+        // 第二步：补全参数后再严格校验
+        //$validator = Validator::make($request->all(), [
+            //"randsk" => "required|string",
+            //"uk" => "required|numeric",
+            //"shareid" => "required|numeric",
+            //"fs_id" => "required|array",
+            //"fs_id.*" => "required|numeric",
+            //"surl" => "required|string",
+            //"dir" => "required|string",
+            //"pwd" => "nullable|string",
+            //"token" => "required|string",
+            //"vcode_str" => "nullable|string",
+            //"vcode_input" => "nullable|string",
+            //"download_folder" => "nullable|boolean",
+        //]);
+        //if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+
+        $remove_limit = config("hklist.remove_limit");
+        if (!$remove_limit) {
+            if ($request["download_folder"] && !config("hklist.parse.allow_folder")) return ResponseController::canNotDownloadFolder();
+
+            // 每次请求不能超过多少个
+            $max_once = config("hklist.limit.max_once");
+            if (count($request["fs_id"]) > $max_once) return ResponseController::filesOverLoaded();
+
+            // 检查限制还能不能解析
+            $checkLimitRes = self::getLimit($request);
+            $checkLimitData = $checkLimitRes->getData(true);
+            if ($checkLimitData["code"] !== 200) return $checkLimitRes;
+            $checkLimitData = $checkLimitData["data"];
+
+            // 检查文件数量是否小于剩余配额
+            if (count($request["fs_id"]) > $checkLimitData["count"]) return ResponseController::tokenQuotaCountIsNotEnough();
+
+            // 检查链接是否有效
+            $valid = self::getFileList($request);
+            $validData = $valid->getData(true);
+            if ($validData["code"] !== 200) return $valid;
+
+            // 获取文件列表
+            $fileList = FileList::query()
+                ->whereIn("fs_id", $request["fs_id"])
+                ->get();
+
+            // 神秘文件
+            $fileListCount = $fileList->count();
+            $requestFsIdCount = count($request["fs_id"]);
+            if ($fileListCount > $requestFsIdCount) return ResponseController::unUniqueFsId();
+            else if ($fileListCount !== $requestFsIdCount) return ResponseController::unknownFsId();
+
+            $min_filesize = config("hklist.limit.min_single_filesize");
+            $max_filesize = config("hklist.limit.max_single_filesize");
+            foreach ($fileList as $file) {
+                if ($file["size"] < $min_filesize) return ResponseController::fileIsTooSmall();
+                if ($file["size"] > $max_filesize) return ResponseController::fileIsTooBig();
+            }
+
+            $sum = $fileList->sum("size");
+
+            if ($sum > config("hklist.limit.max_all_filesize")) return ResponseController::filesIsTooBig();
+
+            // 检查文件总大小是否大于剩余配额
+            if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
+        }
+
+        $parse_mode = $request["token"] === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.token_parse_mode");
+        $response = match ($parse_mode) {
+            0 => V0Controller::request($request),
+            1 => V1Controller::request($request),
+            2 => V2Controller::request($request),
+            3 => V3Controller::request($request),
+            4 => V4Controller::request($request),
+            5 => V5Controller::request($request),
+            6 => V6Controller::request($request),
+            7 => V7Controller::request($request),
+            default => ResponseController::unknownParseMode()
+        };
+        $responseData = $response->getData(true);
+        if ($responseData["code"] !== 200) return $response;
+        $responseData = $responseData["data"];
+
+        $token = Token::query()->firstWhere("token", $request["token"]);
+        $ip = UtilsController::getIp($request);
+
+        if (!$remove_limit && $token["token"] !== "guest") {
+            if (!in_array($ip, $token["ip"])) {
+                if (count($token["ip"]) >= $token["can_use_ip_count"]) return ResponseController::TokenIpHitMax();
+                // 插入当前ip
+                $token->update(["ip" => [$ip, ...$token["ip"]]]);
+            }
+            if ($token["expires_at"] === null) $token->update(["expires_at" => now()->addDays($token["day"])]);
+        }
+
+        $proxy_host = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_host") : config("hklist.parse.token_proxy_host");
+        $proxy_password = $token["token"] === "guest" ? config("hklist.parse.guest_proxy_password") : config("hklist.parse.token_proxy_password");
+
+        $responseData = collect($responseData)->map(function ($item) use ($request, $token, $proxy_host, $proxy_password, $remove_limit) {
+            if ($item["message"] !== "请求成功") return $item;
+
+            $account = Account::query()->find($item["account_id"]);
+            $newProxy = Proxy::query()
+                ->inRandomOrder()
+                ->firstWhere([
+                    "account_id" => $account["id"],
+                    "type" => "proxy",
+                    "enable" => true
+                ]);
+
+            $isLimit = false;
+            foreach ($item["urls"] as $url) if (!str_contains($url, "tsl=0") || str_contains($url, "qdall")) $isLimit = true;
+
+            $item["urls"] = collect($item["urls"])
+                ->filter(fn($url) => !str_contains($url, "ant.baidu.com"))
+                ->reverse()
+                ->map(function ($url) use ($proxy_host, $proxy_password, $newProxy) {
+                    if ($newProxy) {
+                        $arr = explode("@", $newProxy["proxy"]);
+                        if (!empty($arr[0]) || !empty($arr[1])) {
+                            $host = $arr[0];
+                            $password = $arr[1];
+                            return $host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $password)));
+                        }
+                    }
+
+                    if ($proxy_host !== "") {
+                        return $proxy_host . "?url=" . urlencode(base64_encode(UtilsController::xor_encrypt($url, $proxy_password)));
+                    }
+
+                    return $url;
+                })
+                ->values()
+                ->toArray();
+
+            if (!$remove_limit) {
+                $file = FileList::query()->firstWhere([
+                    "fs_id" => $item["fs_id"]
+                ]);
+            }
+
+            if ($account["total_size_updated_at"] === null || !$account["total_size_updated_at"]->isToday()) {
+                $account->update([
+                    "total_size" => 0,
+                    "total_size_updated_at" => now()
+                ]);
+            }
+
+            if (!$remove_limit) {
+                $account->update([
+                    "total_size" => $account["total_size"] + $file["size"],
+                    "total_size_updated_at" => now()
+                ]);
+            }
+
+            $account->update([
+                "switch" => !$isLimit,
+                "reason" => $isLimit ? "账号已限速" : ""
+            ]);
+
+            if ($isLimit) {
+                $item["message"] = "获取成功,但下载链接已限速,推荐重新解析";
+            } else if (!$remove_limit) {
+                // 插入记录
+                Record::query()->create([
+                    "ip" => UtilsController::getIp($request),
+                    "fingerprint" => $request["rand2"] ?? "",
+                    "fs_id" => $file["id"],
+                    "urls" => $item["urls"],
+                    "ua" => $item["ua"],
+                    "token_id" => $token["id"],
+                    "account_id" => $item["account_id"],
+                ]);
+                // 删除指定天数之前的记录
+                Record::query()->where("created_at", "<", now()->subDays(config("hklist.general.save_histories_day")))->delete();
+                // 如果当前卡密是普通类型就自增
+                if ($token["token_type"] === "normal") {
+                    $token->increment("used_size", $file["size"]);
+                    $token->increment("used_count");
+                }
+                $account->increment("used_size", $file["size"]);
+                $account->increment("used_count");
+            }
+
+            unset($item["account_id"]);
+
+            return $item;
+        });
+
+        return ResponseController::success($responseData);
+    }
 }
+
