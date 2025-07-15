@@ -12,6 +12,9 @@ use App\Http\Controllers\Parsers\V4Controller;
 use App\Http\Controllers\Parsers\V5Controller;
 use App\Http\Controllers\Parsers\V6Controller;
 use App\Http\Controllers\Parsers\V7Controller;
+use App\Http\Controllers\Parsers\Share\ShareController_cookie;
+//use App\Http\Controllers\Parsers\Share\ShareController_access;
+use App\Http\Controllers\Parsers\Share\ShareController_enterprise;
 use App\Models\Account;
 use App\Models\FileList;
 use App\Models\Proxy;
@@ -476,155 +479,59 @@ private static function refreshExpiredAccount(Account $account, $needPro)
     {
         set_time_limit(0);
 
-        // 第一步：只校验 token 和 dlink
         $validator = Validator::make($request->all(), [
             "token" => "required|string",
             "dlink" => "required|string"
         ]);
         if ($validator->fails()) return ResponseController::paramsError($validator->errors());
 
-        // 新增：dlink参数解析与补全
-        if ($request->has('dlink')) {
-            //\Log::info('开始解析dlink参数', ['dlink' => $request["dlink"]]);
-            $dlink = $request["dlink"];
-            $urlInfo = parse_url($dlink);
-            $queryArr = [];
-            if (isset($urlInfo["query"])) {
-                parse_str($urlInfo["query"], $queryArr);
-                //\Log::info('dlink query参数解析结果', ['queryArr' => $queryArr]);
-            }
-            // shareinfo 处理
-            if (isset($queryArr["shareinfo"])) {
-                $shareinfo = $queryArr["shareinfo"];
-                $shareinfoArr = explode(",", $shareinfo);
-                $surl = isset($shareinfoArr[0]) ? ("1" . $shareinfoArr[0]) : null;
-                $pwd = $shareinfoArr[1] ?? null;
-                $randsk = isset($shareinfoArr[2]) ? urldecode($shareinfoArr[2]) : null;
-                // fid 取逗号后数字部分
-                $fid = null;
-                if (isset($queryArr["fid"])) {
-                    $fidParts = explode("-", $queryArr["fid"]);
-                    $fid = end($fidParts);
-                }
-                $shareid = $queryArr["shareid"] ?? null;
-                //\Log::info('shareinfo解析结果', [
-                    //'surl' => $surl,
-                    //'pwd' => $pwd,
-                    //'randsk' => $randsk,
-                    //'fid' => $fid,
-                    //'shareid' => $shareid
-                //]);
-                // 调用getFileList1获取文件信息
-                $fileList = BDWPApiController::getFileList1($surl, $pwd, 1, 100, 'time', $fid);
-                $response = $fileList->getData(true);
-                //\Log::info('getFileList1返回数据', ['fileListData' => $response]);
-                if ($response["code"] !== 200) return $fileList;
-                $response = $response["data"];
-                // 存入数据库（参考getFileList）
-                $data = collect($response["list"])
-                    ->filter(fn($item) => !$item["is_dir"])
-                    ->map(fn($item) => [
-                        "surl" => $surl,
-                        "pwd" => $pwd,
-                        "fs_id" => (string)$item["fs_id"],
-                        "size" => (int)$item["size"],
-                        "filename" => $item["server_filename"],
-                        "uk" => $response["uk"] ?? null,
-                        "shareid" => $response["shareid"] ?? null,
-                        "randsk" => $response["randsk"] ?? null,
-                    ])
-                    ->toArray();
-                //\Log::info('补全参数并写入数据库的数据', ['data' => $data]);
-                $result = FileList::query()->upsert($data, ["fs_id"], ["size", "filename", "uk", "shareid", "randsk", "surl", "pwd"]);
-                //\Log::info('upsert返回值', ['result' => $result, 'data' => $data]);
-                // 补全request参数
-                $request->merge([
-                    "surl" => $surl,
-                    "pwd" => $pwd,
-                    "randsk" => $response["randsk"] ?? $randsk, // 优先用接口返回的randsk
-                    "shareid" => $shareid,
-                    "fs_id" => array_map(fn($item) => $item["fs_id"], $data),
-                    "uk" => $response["uk"] ?? null,
-                    "dir" => "/"
-                ]);
-                //\Log::info('最终补全到request的参数', $request->only(['surl','pwd','randsk','shareid','fs_id','uk','dir']));
-            } else {
-                // 无shareinfo，尝试用shareid查库
-                if (isset($queryArr["shareid"])) {
-                    $shareid = $queryArr["shareid"];
-                    $file = FileList::query()->firstWhere(["shareid" => $shareid]);
-                    // 新增重试机制
-                    if (!$file) {
-                        usleep(500000); // 0.5秒
-                        $file = FileList::query()->firstWhere(["shareid" => $shareid]);
-                        if (!$file) {
-                            usleep(500000); // 再等0.5秒
-                            $file = FileList::query()->firstWhere(["shareid" => $shareid]);
-                        }
-                    }
-                    //\Log::info('无shareinfo，尝试用shareid查库', ['shareid' => $shareid, 'file' => $file]);
-                    if ($file) {
-                        // 用数据库中的参数调用getFileList1获取最新文件信息
-                        $surl = $file["surl"];
-                        $pwd = $file["pwd"];
-                        // $fid = $file["fs_id"];
-                        $fid = null;
-                        if (isset($queryArr["fid"])) {
-                            $fidParts = explode("-", $queryArr["fid"]);
-                            $fid = end($fidParts);
-                        }
-                        $fileList = BDWPApiController::getFileList1($surl, $pwd, 1, 100, 'time', $fid);
-                        $response = $fileList->getData(true);
-                        if ($response["code"] !== 200) return $fileList;
-                        $response = $response["data"];
-                        // 存入数据库
-                        $data = collect($response["list"])
-                            ->filter(fn($item) => !$item["is_dir"])
-                            ->map(fn($item) => [
-                                "surl" => $surl,
-                                "pwd" => $pwd,
-                                "fs_id" => (string)$item["fs_id"],
-                                "size" => (int)$item["size"],
-                                "filename" => $item["server_filename"],
-                                "uk" => $response["uk"] ?? null,
-                                "shareid" => $response["shareid"] ?? null,
-                                "randsk" => $response["randsk"] ?? null,
-                            ])
-                            ->toArray();
-                        FileList::query()->upsert($data, ["fs_id"], ["size", "filename", "uk", "shareid", "randsk", "surl", "pwd"]);
-                        // 用接口返回的参数补全request
-                        $request->merge([
-                            "surl" => $surl,
-                            "pwd" => $pwd,
-                            "randsk" => $response["randsk"] ?? $file["randsk"],
-                            "shareid" => $response["shareid"] ?? $file["shareid"],
-                            "fs_id" => array_map(fn($item) => $item["fs_id"], $data),
-                            "uk" => $response["uk"] ?? $file["uk"],
-                            "dir" => "/"
-                        ]);
-                        //\Log::info('最终补全到request的参数', $request->only(['surl','pwd','randsk','shareid','fs_id','uk','dir']));
-                    }
-                }
+        // 处理surl、pwd、sekey写入逻辑
+        $hasSurl = $request->has('surl');
+        $hasPwd = $request->has('pwd');
+        $hasSekey = $request->has('sekey');
+        $shareid = $request->input('shareid');
+
+        // 1. 用户请求中包含真实值时，批量更新数据库
+        if ($hasSurl || $hasPwd || $hasSekey) {
+            $updateArr = [];
+            if ($hasSurl)  $updateArr["surl"] = $request->input("surl");
+            if ($hasPwd)   $updateArr["pwd"] = $request->input("pwd");
+            if ($hasSekey) $updateArr["randsk"] = $request->input("sekey");
+            if (!empty($updateArr)) {
+                FileList::query()->where("shareid", $shareid)->update($updateArr);
             }
         }
 
-        // 第二步：补全参数后再严格校验
-        //$validator = Validator::make($request->all(), [
-            //"randsk" => "required|string",
-            //"uk" => "required|numeric",
-            //"shareid" => "required|numeric",
-            //"fs_id" => "required|array",
-            //"fs_id.*" => "required|numeric",
-            //"surl" => "required|string",
-            //"dir" => "required|string",
-            //"pwd" => "nullable|string",
-            //"token" => "required|string",
-            //"vcode_str" => "nullable|string",
-            //"vcode_input" => "nullable|string",
-            //"download_folder" => "nullable|boolean",
-        //]);
-        //if ($validator->fails()) return ResponseController::paramsError($validator->errors());
+        // 日志排查
+        \Log::info('getDownloadLinksByDlink', [
+            'shareid' => $shareid,
+            'request_surl' => $request->input('surl'),
+            'request_pwd' => $request->input('pwd'),
+            'request_sekey' => $request->input('sekey'),
+        ]);
 
+        $file = FileList::query()->firstWhere("shareid", $shareid);
+        \Log::info('查库结果', ['file' => $file]);
+        $surl  = $hasSurl  ? $request->input("surl")  : ($file ? $file->surl  : "1Pandownload");
+        $pwd   = $hasPwd   ? $request->input("pwd")   : ($file ? $file->pwd   : "1234");
+        $sekey = $hasSekey ? $request->input("sekey") : ($file ? $file->randsk : "");
+
+        $data = [
+            [
+                "surl" => $surl,
+                "pwd" => $pwd,
+                "fs_id" => $request->input("fid", null),
+                "size" => $request->input("size", 0),
+                "filename" => $request->input("name1", ''),
+                "uk" => $request->input("uk", null),
+                "shareid" => $shareid,
+                "randsk" => $sekey,
+            ]
+        ];
+        \Log::info('最终写入数据库的数据', ['data' => $data]);
+        FileList::query()->upsert($data, ["fs_id"], ["surl", "pwd", "uk", "shareid", "randsk", "size", "filename"]);
+
+        // 保留原有配额和校验逻辑
         $remove_limit = config("hklist.remove_limit");
         if (!$remove_limit) {
             if ($request["download_folder"] && !config("hklist.parse.allow_folder")) return ResponseController::canNotDownloadFolder();
@@ -643,9 +550,9 @@ private static function refreshExpiredAccount(Account $account, $needPro)
             if (count($request["fs_id"]) > $checkLimitData["count"]) return ResponseController::tokenQuotaCountIsNotEnough();
 
             // 检查链接是否有效
-            $valid = self::getFileList($request);
-            $validData = $valid->getData(true);
-            if ($validData["code"] !== 200) return $valid;
+            //$valid = self::getFileList($request);
+            //$validData = $valid->getData(true);
+            //if ($validData["code"] !== 200) return $valid;
 
             // 获取文件列表
             $fileList = FileList::query()
@@ -673,22 +580,27 @@ private static function refreshExpiredAccount(Account $account, $needPro)
             if ($sum > $checkLimitData["size"]) return ResponseController::tokenQuotaSizeIsNotEnough();
         }
 
+        // 控制器调用部分：直接传dlink和token
         $parse_mode = $request["token"] === "guest" ? config("hklist.parse.guest_parse_mode") : config("hklist.parse.token_parse_mode");
         $response = match ($parse_mode) {
             0 => V0Controller::request($request),
-            1 => V1Controller::request($request),
-            2 => V2Controller::request($request),
-            3 => V3Controller::request($request),
-            4 => V4Controller::request($request),
-            5 => V5Controller::request($request),
-            6 => V6Controller::request($request),
-            7 => V7Controller::request($request),
+            1 => ShareController_cookie::request($request),
+            2 => ShareController_cookie::request($request),
+            //SVIP
+            5 => ShareController_enterprise::request($request),
+            7 => ShareController_enterprise::request($request),
+            //企业
+            3 => ShareController_access::request($request),
+            4 => ShareController_access::request($request),
+            //8 => ShareController_access::request($request),
+            //开放平台
             default => ResponseController::unknownParseMode()
         };
         $responseData = $response->getData(true);
         if ($responseData["code"] !== 200) return $response;
         $responseData = $responseData["data"];
 
+        // 其余逻辑保持不变
         $token = Token::query()->firstWhere("token", $request["token"]);
         $ip = UtilsController::getIp($request);
 
@@ -756,7 +668,7 @@ private static function refreshExpiredAccount(Account $account, $needPro)
 
             if (!$remove_limit) {
                 $account->update([
-                    "total_size" => $account["total_size"] + $file["size"],
+                    "total_size" => $account["total_size"] + ($file["size"] ?? 0),
                     "total_size_updated_at" => now()
                 ]);
             }
@@ -773,7 +685,7 @@ private static function refreshExpiredAccount(Account $account, $needPro)
                 Record::query()->create([
                     "ip" => UtilsController::getIp($request),
                     "fingerprint" => $request["rand2"] ?? "",
-                    "fs_id" => $file["id"],
+                    "fs_id" => $file["id"] ?? null,
                     "urls" => $item["urls"],
                     "ua" => $item["ua"],
                     "token_id" => $token["id"],
@@ -783,10 +695,10 @@ private static function refreshExpiredAccount(Account $account, $needPro)
                 Record::query()->where("created_at", "<", now()->subDays(config("hklist.general.save_histories_day")))->delete();
                 // 如果当前卡密是普通类型就自增
                 if ($token["token_type"] === "normal") {
-                    $token->increment("used_size", $file["size"]);
+                    $token->increment("used_size", $file["size"] ?? 0);
                     $token->increment("used_count");
                 }
-                $account->increment("used_size", $file["size"]);
+                $account->increment("used_size", $file["size"] ?? 0);
                 $account->increment("used_count");
             }
 

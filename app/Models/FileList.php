@@ -8,6 +8,9 @@ class FileList extends Model
         "id",
         "surl",
         "pwd",
+        "uk",
+        "shareid",
+        "randsk",
         "fs_id",
         "size",
         "filename",
@@ -18,6 +21,9 @@ class FileList extends Model
     protected $fillable = [
         "surl",
         "pwd",
+        "uk",
+        "shareid",
+        "randsk",
         "fs_id",
         "size",
         "filename"
