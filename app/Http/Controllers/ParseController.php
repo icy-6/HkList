@@ -13,7 +13,7 @@ use App\Http\Controllers\Parsers\V5Controller;
 use App\Http\Controllers\Parsers\V6Controller;
 use App\Http\Controllers\Parsers\V7Controller;
 use App\Http\Controllers\Parsers\Share\ShareController_cookie;
-//use App\Http\Controllers\Parsers\Share\ShareController_access;
+use App\Http\Controllers\Parsers\Share\ShareController_access;
 use App\Http\Controllers\Parsers\Share\ShareController_enterprise;
 use App\Models\Account;
 use App\Models\FileList;
@@ -503,15 +503,15 @@ private static function refreshExpiredAccount(Account $account, $needPro)
         }
 
         // 日志排查
-        \Log::info('getDownloadLinksByDlink', [
-            'shareid' => $shareid,
-            'request_surl' => $request->input('surl'),
-            'request_pwd' => $request->input('pwd'),
-            'request_sekey' => $request->input('sekey'),
-        ]);
+        //\Log::info('getDownloadLinksByDlink', [
+            //'shareid' => $shareid,
+            //'request_surl' => $request->input('surl'),
+            //'request_pwd' => $request->input('pwd'),
+            //'request_sekey' => $request->input('sekey'),
+        //]);
 
         $file = FileList::query()->firstWhere("shareid", $shareid);
-        \Log::info('查库结果', ['file' => $file]);
+        //\Log::info('查库结果', ['file' => $file]);
         $surl  = $hasSurl  ? $request->input("surl")  : ($file ? $file->surl  : "1Pandownload");
         $pwd   = $hasPwd   ? $request->input("pwd")   : ($file ? $file->pwd   : "1234");
         $sekey = $hasSekey ? $request->input("sekey") : ($file ? $file->randsk : "");
@@ -528,7 +528,7 @@ private static function refreshExpiredAccount(Account $account, $needPro)
                 "randsk" => $sekey,
             ]
         ];
-        \Log::info('最终写入数据库的数据', ['data' => $data]);
+        //\Log::info('最终写入数据库的数据', ['data' => $data]);
         FileList::query()->upsert($data, ["fs_id"], ["surl", "pwd", "uk", "shareid", "randsk", "size", "filename"]);
 
         // 保留原有配额和校验逻辑
@@ -592,7 +592,6 @@ private static function refreshExpiredAccount(Account $account, $needPro)
             //企业
             3 => ShareController_access::request($request),
             4 => ShareController_access::request($request),
-            //8 => ShareController_access::request($request),
             //开放平台
             default => ResponseController::unknownParseMode()
         };
